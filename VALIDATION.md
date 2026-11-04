@@ -1,5 +1,14 @@
 # Completed validation
 
+Version 2.0.6 adds named Male/Female/Other voice presets, preview and reuse
+in paragraph tags and role defaults. Mixed paragraph playback separates matched
+straight/curly quoted dialogue from unquoted narration. Automated checks cover
+JSON persistence, presets and overrides, segment voice/rate/pitch resets,
+contractions, unmatched quotes, pause/resume, Stop, missing voices, import/reimport
+and unchanged manuscript/history. A 393 × 820 simulated-host browser check
+created a Female · Torill preset, previewed it, reused it on the next paragraph
+and verified the saved selection. No real Android voice audio was tested.
+
 Version 2.0.5 adds project speech defaults and paragraph voice tags. JavaScript
 checks cover save/load, role and paragraph precedence, switching voice/rate/pitch,
 missing voices, bounds, split inheritance, merge protection and unchanged text
@@ -40,7 +49,7 @@ uses the existing save-before-replace flow and native new-project file isolation
   certificate trust, dependency updates and platform compatibility advisories.
   No TLS certificate error is bypassed and remote HTTP hosts are rejected by the
   native request policy.
-- All 17 Java unit tests passed: initial recovery, first save, autosave, previous
+- All 18 Java unit tests passed: initial recovery, first save, autosave, previous
   backups, unchanged-save backup retention, external conflicts, stale decisions,
   continued recovery during conflict, restart conflicts, missing documents,
   metadata/cover/history preservation, new-project isolation, invalid opens,

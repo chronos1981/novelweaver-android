@@ -536,62 +536,95 @@ function defaultProject(){const p=P(),b=mkBook('Book One');p.Books.push(b);p.Cha
 // Speech metadata belongs to the project, never to the manuscript text.
 function cleanSpeechSettings(raw){
  if(!raw||typeof raw!=='object')return {};
- const s={};if(typeof raw.Voice==='string'&&raw.Voice)s.Voice=raw.Voice.slice(0,500);
+ const s={};if(typeof raw.ProfileId==='string'&&raw.ProfileId)s.ProfileId=raw.ProfileId.slice(0,100);if(typeof raw.Voice==='string'&&raw.Voice)s.Voice=raw.Voice.slice(0,500);
  for(const key of ['Rate','Pitch'])if(typeof raw[key]==='number'&&Number.isFinite(raw[key]))s[key]=Math.max(.5,Math.min(2,raw[key]));
  return s;
 }
 function cleanSpeechTag(raw){
  if(!raw||typeof raw!=='object')return null;
  const s=cleanSpeechSettings(raw);s.Role=raw.Role==='dialogue'?'dialogue':'narration';
+ if(raw.ImportedDefaults&&typeof raw.ImportedDefaults==='object')s.ImportedDefaults=cleanSpeechDefaults(raw.ImportedDefaults);
  if(typeof raw.Speaker==='string'&&raw.Speaker.trim())s.Speaker=raw.Speaker.trim().slice(0,100);
  return s;
 }
 function cleanSpeechDefaults(raw){return {Narration:cleanSpeechSettings(raw?.Narration),Dialogue:cleanSpeechSettings(raw?.Dialogue)}}
-function speechImportedTag(p,defaults){
- const tag=cleanSpeechTag(p.Speech),preset=cleanSpeechSettings(defaults?.[tag?.Role==='dialogue'?'Dialogue':'Narration']);
- return Object.keys(preset).length?cleanSpeechTag({...preset,...tag}):tag;
+function cleanSpeechProfiles(raw){
+ if(!Array.isArray(raw))return [];
+ const seen=new Set();return raw.filter(p=>p&&typeof p.Id==='string'&&p.Id&&!seen.has(p.Id)&&(seen.add(p.Id),true)).slice(0,200).map(p=>({Id:p.Id.slice(0,100),Name:String(p.Name||'Voice preset').slice(0,100),Gender:['male','female'].includes(p.Gender)?p.Gender:'other',...cleanSpeechSettings({...p,ProfileId:null})}));
 }
-function speechLabel(tag){return tag?(tag.Role==='dialogue'?'Dialogue':'Narration')+(tag.Speaker?' · '+tag.Speaker:''):'Narration · defaults'}
+function speechProfileSettings(settings,profiles=S.project.SpeechProfiles){
+ const s=cleanSpeechSettings(settings),profile=cleanSpeechProfiles(profiles).find(p=>p.Id===s.ProfileId);
+ const result={...cleanSpeechSettings(profile),...s};delete result.ProfileId;return result;
+}
+function speechImportedTag(p,defaults,profiles){
+ const tag=cleanSpeechTag(p.Speech),out=tag?{...tag,...speechProfileSettings(tag,profiles)}:null;
+ if(out)delete out.ProfileId;
+ // Freeze both roles on imported paragraphs so importing another book cannot change its voices.
+ const imported={Narration:speechProfileSettings(tag?.ImportedDefaults?.Narration||defaults?.Narration,profiles),Dialogue:speechProfileSettings(tag?.ImportedDefaults?.Dialogue||defaults?.Dialogue,profiles)};
+ if(out)imported[out.Role==='dialogue'?'Dialogue':'Narration']={...imported[out.Role==='dialogue'?'Dialogue':'Narration'],...speechProfileSettings(out,profiles)};
+ if(Object.values(imported).some(v=>Object.keys(v).length))return {...(out||{Role:'narration'}),ImportedDefaults:imported};
+ return out;
+}
+function speechLabel(tag){return tag?(tag.Role==='dialogue'?'Dialogue':'Narration')+((tag.Speaker||S.project.SpeechProfiles?.find(p=>p.Id===tag.ProfileId)?.Name)?' · '+(tag.Speaker||S.project.SpeechProfiles.find(p=>p.Id===tag.ProfileId).Name):''):'Narration · defaults'}
 function speechBadge(p){return p.Speech?`<button class="chip-button" data-action="paragraph-speech" data-id="${h(p.Id)}" aria-label="Speech settings: ${h(speechLabel(p.Speech))}">♫ ${h(speechLabel(p.Speech))}</button>`:''}
-function speechResolve(p,listen=S.listen,defaults=S.project.SpeechDefaults){
- const tag=cleanSpeechTag(p?.Speech),role=tag?.Role||'narration',preset=cleanSpeechSettings(defaults?.[role==='dialogue'?'Dialogue':'Narration']);
- const s={...preset,...cleanSpeechSettings(tag)};
- return {voice:s.Voice||listen.voice||'',rate:s.Rate||listen.rate||1,pitch:s.Pitch||1};
+function speechResolve(p,listen=S.listen,defaults=S.project.SpeechDefaults,role=null,profiles=S.project.SpeechProfiles){
+ const tag=cleanSpeechTag(p?.Speech);role=role||tag?.Role||'narration';
+ const roleKey=role==='dialogue'?'Dialogue':'Narration';
+ const preset=speechProfileSettings(tag?.ImportedDefaults?.[roleKey]||defaults?.[roleKey],profiles);
+ const overrides=tag?.Role===role?speechProfileSettings(tag,profiles):{};
+ const s={...preset,...overrides};return {voice:s.Voice||listen.voice||'',rate:s.Rate||listen.rate||1,pitch:s.Pitch||1};
 }
-function speechPlaybackOptions(pid){
- const p=locate(pid)?.paragraph,options=speechResolve(p),voices=window.NWTTS?.voices()||[];
+function speechAvailableOptions(options){
+ const voices=window.NWTTS?.voices()||[];
  if(options.voice&&!voices.some(v=>v.id===options.voice)){
   const unavailable=options.voice;options.voice=voices.some(v=>v.id===S.listen.voice)?S.listen.voice:'';
-  if(speechPlaybackOptions.warned!==unavailable){speechPlaybackOptions.warned=unavailable;toast('Tagged voice is not installed. Using the Listen voice or device default.')}
+  if(speechAvailableOptions.warned!==unavailable){speechAvailableOptions.warned=unavailable;toast('Tagged voice is not installed. Using the Listen voice or device default.')}
  }
  return options;
 }
-function speechFields(s={}){
+function speechPlaybackOptions(pid,role=null){return speechAvailableOptions(speechResolve(locate(pid)?.paragraph,S.listen,S.project.SpeechDefaults,role))}
+function speechFields(s={},presets=true){
  const voices=window.NWTTS?.voices()||[],missing=s.Voice&&!voices.some(v=>v.id===s.Voice);
- return `<label class="form-label" for="speech-voice">Voice</label><select class="text-input" id="speech-voice"><option value="">Use defaults</option>${missing?`<option value="${h(s.Voice)}" selected>Unavailable on this device · ${h(s.Voice)}</option>`:''}${voices.map(v=>`<option value="${h(v.id)}" ${s.Voice===v.id?'selected':''}>${h(v.name)}${v.lang?' ('+h(v.lang)+')':''}</option>`).join('')}</select><div class="reader-toolbar"><label>Speed (0.5–2×)<input class="text-input" type="number" id="speech-rate" min="0.5" max="2" step="0.05" placeholder="Use defaults" value="${s.Rate||''}"></label><label>Pitch (0.5–2)<input class="text-input" type="number" id="speech-pitch" min="0.5" max="2" step="0.05" placeholder="Use defaults" value="${s.Pitch||''}"></label></div>`;
+ return `${presets?`<label class="form-label" for="speech-profile">Saved voice preset</label><select class="text-input" id="speech-profile"><option value="">Use defaults / custom</option>${s.ProfileId&&!S.project.SpeechProfiles?.some(p=>p.Id===s.ProfileId)?`<option selected value="${h(s.ProfileId)}">Unavailable preset</option>`:''}${(S.project.SpeechProfiles||[]).map(p=>`<option value="${h(p.Id)}" ${s.ProfileId===p.Id?'selected':''}>${h(p.Gender==='male'?'Male':p.Gender==='female'?'Female':'Other')} · ${h(p.Name)}</option>`).join('')}</select><p class="tiny">Choose a saved male/female voice, or set custom overrides below.</p>`:''}<label class="form-label" for="speech-voice">Voice</label><select class="text-input" id="speech-voice"><option value="">Use defaults</option>${missing?`<option value="${h(s.Voice)}" selected>Unavailable on this device · ${h(s.Voice)}</option>`:''}${voices.map(v=>`<option value="${h(v.id)}" ${s.Voice===v.id?'selected':''}>${h(v.name)}${v.lang?' ('+h(v.lang)+')':''}</option>`).join('')}</select><div class="reader-toolbar"><label>Speed (0.5–2×)<input class="text-input" type="number" id="speech-rate" min="0.5" max="2" step="0.05" placeholder="Use defaults" value="${s.Rate||''}"></label><label>Pitch (0.5–2)<input class="text-input" type="number" id="speech-pitch" min="0.5" max="2" step="0.05" placeholder="Use defaults" value="${s.Pitch||''}"></label></div><div class="item-actions"><button class="outline-button" data-action="speech-preview">Preview voice</button>${presets?'<button class="outline-button" data-action="speech-presets">Manage saved voices</button>':''}</div>`;
 }
 function speechReadFields(){
- const s={},voice=$('#speech-voice').value;if(voice)s.Voice=voice;
+ const s={},voice=$('#speech-voice').value,profile=$('#speech-profile')?.value;if(profile)s.ProfileId=profile;if(voice)s.Voice=voice;
  for(const key of ['Rate','Pitch']){const input=$('#speech-'+key.toLowerCase()),value=input.value.trim();if(value){const n=Number(value);if(!Number.isFinite(n)||n<.5||n>2)throw Error(key+' must be between 0.5 and 2.');s[key]=n;}}
  return s;
 }
 function paragraphSpeech(pid,error='',draft=null){
  const f=locate(pid);if(!f)return;flushAllEdits();listenStop();const s=draft||cleanSpeechTag(f.paragraph.Speech)||{};
- modal('Paragraph speech tag',`<p class="item-sub">${h(short(f.paragraph.Text||'(empty paragraph)',140))}</p>${error?`<p role="alert">${h(error)}</p>`:''}<label class="form-label" for="speech-role">Read as</label><select class="text-input" id="speech-role"><option value="narration" ${s.Role!=='dialogue'?'selected':''}>Narration</option><option value="dialogue" ${s.Role==='dialogue'?'selected':''}>Dialogue</option></select><label class="form-label" for="speech-speaker">Speaker (optional label)</label><input class="text-input" id="speech-speaker" maxlength="100" placeholder="e.g. Niels" value="${h(s.Speaker||'')}">${speechFields(s)}<p class="tiny">Blank settings inherit the narration or dialogue defaults in Listen. The tag applies to this whole paragraph. Split mixed narration and dialogue to give each its own voice. Tags are saved in your project; they are not spoken or printed.</p>`,[{text:'Cancel',value:'cancel'},{text:'Remove tag',value:'remove'},{text:'Save tag',value:'save',primary:true}],v=>{
-  if(v==='cancel')return;
+ modal('Paragraph speech tag',`<p class="item-sub">${h(short(f.paragraph.Text||'(empty paragraph)',140))}</p>${error?`<p role="alert">${h(error)}</p>`:''}<label class="form-label" for="speech-role">Apply these settings to</label><select class="text-input" id="speech-role"><option value="narration" ${s.Role!=='dialogue'?'selected':''}>Narration outside quotes</option><option value="dialogue" ${s.Role==='dialogue'?'selected':''}>Dialogue inside quotes</option></select><label class="form-label" for="speech-speaker">Speaker (optional label)</label><input class="text-input" id="speech-speaker" maxlength="100" placeholder="e.g. Niels" value="${h(s.Speaker||'')}">${speechFields(s)}<p class="tiny">Blank settings inherit the narration or dialogue defaults in Listen. Only quoted text uses dialogue settings. Text outside quotes uses narration settings, even in the same paragraph. Use matched straight or curly quotation marks. Tags are saved in your project; they are not spoken or printed.</p>`,[{text:'Cancel',value:'cancel'},{text:'Remove tag',value:'remove'},{text:'Save tag',value:'save',primary:true}],v=>{
+  window.NWTTS?.stop();if(v==='cancel')return;
   if(v==='remove'){delete f.paragraph.Speech;changed();render();return}
   const draft={Role:$('#speech-role').value,Speaker:$('#speech-speaker').value};
-  try{f.paragraph.Speech=cleanSpeechTag({...speechReadFields(),...draft});changed();render();toast('Speech tag saved')}catch(e){paragraphSpeech(pid,e.message,{...s,...draft})}
+  try{f.paragraph.Speech=cleanSpeechTag({...speechReadFields(),...draft,...(s.ImportedDefaults?{ImportedDefaults:s.ImportedDefaults}:{})});changed();render();toast('Speech tag saved')}catch(e){paragraphSpeech(pid,e.message,{...s,...draft})}
  });
 }
-function speechDefaultMenu(){modal('Narration & dialogue voices','<p>Project defaults apply to paragraphs by role. Untagged paragraphs use narration. Blank values fall back to the Listen voice and speed; pitch falls back to 1.</p><div class="detail-grid"><button class="outline-button" data-action="speech-defaults-narration">Narration defaults</button><button class="outline-button" data-action="speech-defaults-dialogue">Dialogue defaults</button></div>',[{text:'Close',value:'cancel'}])}
+function speechDefaultMenu(){modal('Narration & dialogue voices','<p>Project defaults apply to paragraphs by role. Text outside quotes uses narration; quoted text uses dialogue. Blank values fall back to the Listen voice and speed; pitch falls back to 1.</p><div class="detail-grid"><button class="outline-button" data-action="speech-presets">Saved male/female voices</button><button class="outline-button" data-action="speech-defaults-narration">Narration defaults</button><button class="outline-button" data-action="speech-defaults-dialogue">Dialogue defaults</button></div>',[{text:'Close',value:'cancel'}])}
 function speechDefaultEdit(role,error=''){
  const key=role==='dialogue'?'Dialogue':'Narration',s=cleanSpeechDefaults(S.project.SpeechDefaults)[key];listenStop();
- modal(key+' defaults',`${error?`<p role="alert">${h(error)}</p>`:''}${speechFields(s)}<p class="tiny">Saved with this project. Installed voice names can differ between devices. Unavailable voices fall back to the Listen voice or device default.</p>`,[{text:'Cancel',value:'cancel'},{text:'Reset',value:'reset'},{text:'Save defaults',value:'save',primary:true}],v=>{if(v==='cancel')return;try{const settings=v==='reset'?{}:speechReadFields();S.project.SpeechDefaults=cleanSpeechDefaults(S.project.SpeechDefaults);S.project.SpeechDefaults[key]=settings;changed();render();toast(key+' defaults saved')}catch(e){speechDefaultEdit(role,e.message)}});
+ modal(key+' defaults',`${error?`<p role="alert">${h(error)}</p>`:''}${speechFields(s)}<p class="tiny">Saved with this project. Installed voice names can differ between devices. Unavailable voices fall back to the Listen voice or device default.</p>`,[{text:'Cancel',value:'cancel'},{text:'Reset',value:'reset'},{text:'Save defaults',value:'save',primary:true}],v=>{window.NWTTS?.stop();if(v==='cancel')return;try{const settings=v==='reset'?{}:speechReadFields();S.project.SpeechDefaults=cleanSpeechDefaults(S.project.SpeechDefaults);S.project.SpeechDefaults[key]=settings;changed();render();toast(key+' defaults saved')}catch(e){speechDefaultEdit(role,e.message)}});
 }
 
+function speechPresetMenu(){
+ listenStop();const profiles=cleanSpeechProfiles(S.project.SpeechProfiles);
+ modal('Saved voices',`<p>Save voices once, then select them for later paragraphs or narration/dialogue defaults. Android does not reliably label voice gender: preview a voice and label it Male or Female yourself.</p><div class="option-list">${profiles.map(p=>`<div class="option-row"><span>${h(p.Gender==='male'?'Male':p.Gender==='female'?'Female':'Other')} · ${h(p.Name)}</span><button class="outline-button" data-action="speech-preset-edit" data-id="${h(p.Id)}">Edit</button></div>`).join('')||'<p>No saved voices yet.</p>'}</div><button class="primary-button" data-action="speech-preset-new">+ Save a voice</button>`,[{text:'Close',value:'cancel'}],()=>window.NWTTS?.stop());
+}
+function speechPresetEdit(pid=null,error=''){
+ listenStop();const preset=S.project.SpeechProfiles?.find(p=>p.Id===pid)||{Name:'',Gender:'male'};
+ modal(pid?'Edit saved voice':'Save a voice',`${error?`<p role="alert">${h(error)}</p>`:''}<label class="form-label" for="speech-preset-name">Preset name</label><input class="text-input" id="speech-preset-name" maxlength="100" placeholder="e.g. Niels or Female narrator" value="${h(preset.Name)}"><label class="form-label" for="speech-gender">Voice label</label><select class="text-input" id="speech-gender"><option value="male" ${preset.Gender==='male'?'selected':''}>Male</option><option value="female" ${preset.Gender==='female'?'selected':''}>Female</option><option value="other" ${preset.Gender==='other'?'selected':''}>Other</option></select>${speechFields(preset,false)}<p class="tiny">Choose an installed voice and preview it. These labels organize your presets; they do not change the speech engine’s voice. Presets are saved with the project.</p>`,[{text:'Cancel',value:'cancel'},{text:'Save voice',value:'save',primary:true}],v=>{
+  window.NWTTS?.stop();if(v!=='save')return;
+  try{const settings=speechReadFields(),name=$('#speech-preset-name').value.trim();if(!name)throw Error('Enter a preset name.');if(!settings.Voice)throw Error('Choose an installed voice to save.');const value={Id:pid||id(),Name:name,Gender:$('#speech-gender').value,...settings};S.project.SpeechProfiles=cleanSpeechProfiles(S.project.SpeechProfiles);const ix=S.project.SpeechProfiles.findIndex(p=>p.Id===value.Id);if(ix>=0)S.project.SpeechProfiles[ix]=value;else S.project.SpeechProfiles.push(value);changed();render();speechPresetMenu()}catch(e){speechPresetEdit(pid,e.message)}
+ });
+}
+function speechPreview(){
+ try{if(!window.NWTTS?.available())throw Error('No speech engine is available.');const role=$('#speech-role')?.value||'narration';const tag={Role:role,...speechReadFields()};const options=speechAvailableOptions(speechResolve({Speech:tag},S.listen,S.project.SpeechDefaults,role));window.NWTTS.speak('This is a preview of the selected voice.',{...options,onError:message=>toast('Speech: '+message)})}catch(e){toast(e.message)}
+}
+document.addEventListener('change',event=>{if(event.target.id==='speech-profile'){for(const key of ['voice','rate','pitch'])$('#speech-'+key).value='';}});
+
 function cleanProject(raw){if(!raw||typeof raw!=='object'||!Array.isArray(raw.Books)||!Array.isArray(raw.Chapters)||!Array.isArray(raw.Threads))throw Error('Not a NovelWeaver project (.novel.json).');
- const p={Id:String(raw.Id||id()),Title:String(raw.Title||'Untitled Series'),ModifiedAtUtc:typeof raw.ModifiedAtUtc==='string'&&Number.isFinite(Date.parse(raw.ModifiedAtUtc))?raw.ModifiedAtUtc:null,Books:[],Chapters:[],Threads:[],Reviews:[],History:[],SpeechDefaults:cleanSpeechDefaults(raw.SpeechDefaults)};
+ const p={Id:String(raw.Id||id()),Title:String(raw.Title||'Untitled Series'),ModifiedAtUtc:typeof raw.ModifiedAtUtc==='string'&&Number.isFinite(Date.parse(raw.ModifiedAtUtc))?raw.ModifiedAtUtc:null,Books:[],Chapters:[],Threads:[],Reviews:[],History:[],SpeechDefaults:cleanSpeechDefaults(raw.SpeechDefaults),SpeechProfiles:cleanSpeechProfiles(raw.SpeechProfiles)};
  p.Books=raw.Books.map(b=>({Id:String(b.Id||id()),Title:String(b.Title||'Untitled Book'),Author:String(b.Author||'').slice(0,200),FrontCover:cleanCover(b.FrontCover),BackCover:cleanCover(b.BackCover)}));
  p.Chapters=raw.Chapters.map(c=>({Id:String(c.Id||id()),BookId:String(c.BookId||''),Title:String(c.Title||'Chapter'),Paragraphs:(Array.isArray(c.Paragraphs)?c.Paragraphs:[]).map(q=>({Id:String(q.Id||id()),Text:String(q.Text||''),ThreadIds:Array.isArray(q.ThreadIds)?q.ThreadIds.map(String):[],Speech:cleanSpeechTag(q.Speech)}))}));
  p.Threads=raw.Threads.map(t=>({Id:String(t.Id||id()),Name:String(t.Name||'Thread'),Notes:String(t.Notes||'')}));
@@ -873,14 +906,41 @@ function renderListen(){const b=activeBook();if(!b)return pageTitle('LISTEN','No
  `<div class="reader-toolbar"><label>Installed voice<select id="listen-voice">${listenVisibleVoices()}</select></label><label>Speed: <output id="listen-rate-label">${S.listen.rate.toFixed(2)}×</output><input type="range" id="listen-rate" min="0.65" max="1.8" step="0.05" value="${S.listen.rate}"></label></div>`+
  `<div class="listen-controls"><button class="outline-button" data-action="listen-prev" title="Previous paragraph">◀◀</button><button class="primary-button" id="listen-play" data-action="listen-play">${S.listen.playing?'❚❚ Pause':S.listen.paused?'▶ Resume':'▶ Play'}</button><button class="outline-button" data-action="listen-next" title="Next paragraph">▶▶</button><button class="outline-button" data-action="listen-stop">■ Stop</button></div>`+
  `<p id="listen-status" class="reader-stats" role="status">${supported?'Ready to play offline if a local voice is installed.':'No speech engine found. On Android use the native app, or install offline browser voices.'}</p><div class="reader-stats">${items.length.toLocaleString()} paragraphs in range · <span id="listen-position">${items.length?S.listen.index+1:0} / ${items.length}</span></div>`+
- `<div class="listen-current"><div class="small-label" id="listen-chapter-label">${h(cur?.chapter||'No text')}</div><button type="button" id="listen-paragraph" class="listen-excerpt listen-tap" data-action="listen-edit" title="Tap to edit this paragraph">${h(cur?.text||'Add some manuscript text to begin.')}</button><div class="item-actions"><button class="outline-button" data-action="listen-edit">✎ Edit this paragraph</button><button class="outline-button" data-action="listen-pronunciations">Pronunciations</button><button class="outline-button" data-action="paragraph-speech" data-id="${h(cur?.id||'')}">Paragraph speech tag</button><button class="outline-button" data-action="speech-defaults">Narration &amp; dialogue defaults</button></div></div>`+
+ `<div class="listen-current"><div class="small-label" id="listen-chapter-label">${h(cur?.chapter||'No text')}</div><button type="button" id="listen-paragraph" class="listen-excerpt listen-tap" data-action="listen-edit" title="Tap to edit this paragraph">${h(cur?.text||'Add some manuscript text to begin.')}</button><div class="item-actions"><button class="outline-button" data-action="listen-edit">✎ Edit this paragraph</button><button class="outline-button" data-action="listen-pronunciations">Pronunciations</button><button class="outline-button" data-action="paragraph-speech" data-id="${h(cur?.id||'')}">Paragraph speech tag</button><button class="outline-button" data-action="speech-defaults">Narration, dialogue &amp; saved voices</button></div></div>`+
  `<p class="tiny">Playback follows the selected paragraph. Tap Edit to stop and open it in the writer. Listen voice, speed and bookmarks are saved on this device. Paragraph speech tags and narration/dialogue defaults are saved in the project. Blank tag settings inherit those defaults; pitch 1 is normal.</p></section>`}
 function syncListenUI(){if(S.view!=='listen')return;const l=S.listen,c=l.queue[l.index];const status=$('#listen-status'),play=$('#listen-play'),paragraph=$('#listen-paragraph'),pos=$('#listen-position');if(play)play.textContent=l.playing?'❚❚ Pause':l.paused?'▶ Resume':'▶ Play';if(status)status.textContent=l.playing?'Speaking…':l.paused?'Paused':window.NWTTS?.available()?'Ready':'Speech is unavailable on this device';if(paragraph)paragraph.textContent=c?.text||'No text selected';if(pos)pos.textContent=`${l.queue.length?l.index+1:0} / ${l.queue.length}`;if($('#listen-chapter-label'))$('#listen-chapter-label').textContent=c?.chapter||'';const tagButton=$('[data-action="paragraph-speech"]',document.getElementById('main'));if(tagButton&&c)tagButton.dataset.id=c.id;}
 function listenSpokenText(raw){let text=raw;for(const rule of S.listen.rules){if(!rule.word||!rule.said)continue;try{const esc=rule.word.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');text=text.replace(new RegExp('(?<![\\p{L}\\p{N}])'+esc+'(?![\\p{L}\\p{N}])','giu'),()=>rule.said)}catch(e){console.warn('Bad pronunciation rule',e)}}return text}
 function listenStop(){S.listen.token++;window.NWTTS?.stop();S.listen.playing=false;S.listen.paused=false;syncListenUI()}
 function listenAdvance(delta,auto=false){const l=S.listen;if(!l.queue.length){listenStop();return}const target=l.index+delta;if(target<0||target>=l.queue.length){listenStop();if(auto)toast('End of selected book or chapter');return}const wasPlaying=l.playing;listenStop();l.index=target;l.pid=l.queue[l.index].id;listenBookmark();syncListenUI();if(wasPlaying||auto)listenPlay()}
 function listenBookmark(){const b=activeBook(),l=S.listen;if(b&&l.pid){(l.bookmarks||={})[b.Id]=l.pid;listenSave()}}
-function listenPlay(){const l=S.listen;if(!window.NWTTS?.available()){toast('No speech voice available. Install an offline TTS voice on the device.');return}if(l.paused){l.paused=false;l.playing=true;window.NWTTS.resume();syncListenUI();return}if(!l.queue.length)listenPrepare();const item=l.queue[l.index];if(!item){toast('No text to narrate');return}l.pid=item.id;listenBookmark();l.playing=true;l.paused=false;const token=++l.token;syncListenUI();window.NWTTS.speak(listenSpokenText(item.text),{...speechPlaybackOptions(item.id),onDone:()=>{if(token!==l.token||!l.playing)return;listenAdvance(1,true)},onError:message=>{if(token!==l.token||l.paused)return;listenStop();toast('Speech: '+message)}})}
+// Recognize paired quotes before applying pronunciation substitutions.
+// Apostrophes inside words are not quotation boundaries.
+function speechSegments(text){
+ const pattern=/"[^"\n]*(?:\n[^"\n]*)*"|“[^”]*”|‘(?:[^’]|’(?=\p{L}))*’|(?<![\p{L}\p{N}])'(?=\S)(?:[^']|'(?=\p{L}))*'(?![\p{L}\p{N}])/gu;
+ const parts=[];let end=0;
+ for(const match of text.matchAll(pattern)){
+  if(match.index>end)parts.push({text:text.slice(end,match.index),role:'narration'});
+  parts.push({text:match[0],role:'dialogue'});end=match.index+match[0].length;
+ }
+ if(end<text.length)parts.push({text:text.slice(end),role:'narration'});
+ return parts;
+}
+function listenPlay(){
+ const l=S.listen;
+ if(!window.NWTTS?.available()){toast('No speech voice available. Install an offline TTS voice on the device.');return}
+ if(l.paused){l.paused=false;l.playing=true;window.NWTTS.resume();syncListenUI();return}
+ if(!l.queue.length)listenPrepare();const item=l.queue[l.index];if(!item){toast('No text to narrate');return}
+ l.pid=item.id;listenBookmark();l.playing=true;l.paused=false;const token=++l.token;
+ const segments=speechSegments(item.text).filter(p=>p.text.trim());let index=0;syncListenUI();
+ function next(){
+  if(token!==l.token||!l.playing||l.paused)return;
+  if(index>=segments.length){listenAdvance(1,true);return}
+  const part=segments[index];
+  window.NWTTS.speak(listenSpokenText(part.text),{...speechPlaybackOptions(item.id,part.role),onDone:()=>{if(token!==l.token||!l.playing||l.paused)return;index++;next()},onError:message=>{if(token!==l.token||l.paused)return;listenStop();toast('Speech: '+message)}});
+ }
+ next();
+}
+
 function listenPause(){if(!S.listen.playing)return;S.listen.playing=false;S.listen.paused=true;window.NWTTS?.pause();syncListenUI()}
 function listenPronunciations(){const rules=S.listen.rules;modal('TTS pronunciation dictionary',`<p class="item-sub">Replace fictional terms only in spoken audio. The manuscript text stays unchanged.</p><label class="form-label">Written word or phrase</label><input class="text-input" id="pron-written" placeholder="Alt’erra"><label class="form-label">Spoken pronunciation</label><input class="text-input" id="pron-spoken" placeholder="Al terra"><div class="item-actions"><button class="primary-button" data-action="pron-add">Add pronunciation</button></div><div class="option-list">${rules.map((r,i)=>`<div class="option-row"><span><b>${h(r.word)}</b> → ${h(r.said)}</span><button class="outline-button" data-action="pron-remove" data-id="${i}">Remove</button></div>`).join('')||'<p class="tiny">No custom pronunciations yet.</p>'}</div>`,[{text:'Close',value:'cancel'}])}
 function writeChapterTargets(ch=activeChapter()) {
@@ -985,7 +1045,7 @@ function mergeImportedBooks(current,raw){
  const ids=new Map(),remap=value=>{if(!value)return value;if(!ids.has(value)){let fresh;do{fresh=id()}while(used.has(fresh));used.add(fresh);ids.set(value,fresh)}return ids.get(value)};
  const titles=new Set(current.Books.map(b=>b.Title));
  const books=incoming.Books.map(b=>{let title=b.Title,n=2;while(titles.has(title)){title=b.Title+' (imported '+n+')';n++}titles.add(title);return {...b,Id:remap(b.Id),Title:title}});
- const chapters=incoming.Chapters.map(c=>({...c,Id:remap(c.Id),BookId:remap(c.BookId),Paragraphs:c.Paragraphs.map(p=>({...p,Speech:speechImportedTag(p,incoming.SpeechDefaults),Id:remap(p.Id),ThreadIds:p.ThreadIds.map(remap)}))}));
+ const chapters=incoming.Chapters.map(c=>({...c,Id:remap(c.Id),BookId:remap(c.BookId),Paragraphs:c.Paragraphs.map(p=>({...p,Speech:speechImportedTag(p,incoming.SpeechDefaults,incoming.SpeechProfiles),Id:remap(p.Id),ThreadIds:p.ThreadIds.map(remap)}))}));
  const threads=incoming.Threads.map(t=>({...t,Id:remap(t.Id)}));
  const reviews=incoming.Reviews.map(r=>({...r,Id:remap(r.Id),ThreadId:remap(r.ThreadId),SourceParagraphId:remap(r.SourceParagraphId),TargetParagraphId:remap(r.TargetParagraphId),ChangeId:remap(r.ChangeId)}));
  const history=incoming.History.map(c=>({...c,Id:remap(c.Id),ParagraphId:remap(c.ParagraphId),ChapterId:remap(c.ChapterId)}));
@@ -1026,7 +1086,7 @@ const HELP_CATEGORIES=[['all','All topics'],['writing','Using NovelWeaver'],['sa
 function helpCode(code,label='Command or configuration'){return `<div class="help-code-block"><div class="help-code-head"><span>${h(label)}</span><button type="button" class="help-copy" data-action="help-copy" aria-label="Copy ${h(label)}">Copy</button></div><pre tabindex="0"><code>${h(code)}</code></pre></div>`}
 function helpLink(url,label){return `<a href="${h(url)}" target="_blank" rel="noopener noreferrer">${h(label)} <span class="help-external">↗</span></a>`}
 const HELP_TOPICS=[
- {id:'speech-tags',category:'writing',title:'Narration and dialogue speech tags',summary:'Assign paragraph roles, installed voices, speed and pitch.',keywords:'tts voice speech dialogue narration speaker pitch speed tags',body:`<p>In Write, open a paragraph’s <b>⋯ → Voice &amp; speech tag</b>. Choose Narration or Dialogue, optionally label the speaker, and select a voice, speed or pitch. Save tag. Its badge opens the settings again. Remove tag returns to narration defaults.</p><p>Use <b>Listen → Narration &amp; dialogue defaults</b> to set shared voices and settings. Blank paragraph fields inherit that role’s settings. Blank role settings inherit the Listen voice and speed; normal pitch is 1. Untagged paragraphs use narration.</p><p>Tags apply to whole paragraphs. Split mixed narration and dialogue for separate voices. Splitting copies the tag; merging requires matching tags. A speaker name is a label; choose its voice explicitly. Speech tags travel with the .novel.json project, while voice availability depends on the device. Missing voices fall back with a warning. TXT, DOCX and EPUB exports contain the manuscript text without speech tags.</p>`},
+ {id:'speech-tags',category:'writing',title:'Narration and dialogue speech tags',summary:'Assign paragraph roles, installed voices, speed and pitch.',keywords:'tts voice speech dialogue narration speaker pitch speed tags',body:`<p>In Write, open a paragraph’s <b>⋯ → Voice &amp; speech tag</b>. Choose Narration or Dialogue, optionally label the speaker, and select a voice, speed or pitch. Save tag. Its badge opens the settings again. Remove tag returns to narration defaults.</p><p>Use <b>Listen → Narration &amp; dialogue defaults</b> to set shared voices and settings. Blank paragraph fields inherit that role’s settings. Blank role settings inherit the Listen voice and speed; normal pitch is 1. Untagged text uses narration outside quotes and dialogue inside quotes.</p><p>Matched straight or curly quotes use dialogue voices; narration outside quotes uses narrator settings in the same paragraph. Contractions and apostrophes are not dialogue. Unmatched quotes stay with the narrator. Open Saved voices to preview and save named Male/Female presets, then reuse them in paragraph tags or role defaults. Splitting copies the tag; merging requires matching tags. A speaker name is a label; choose a saved preset or installed voice. Speech tags travel with the .novel.json project, while voice availability depends on the device. Missing voices fall back with a warning. TXT, DOCX and EPUB exports contain the manuscript text without speech tags.</p>`},
  {id:'getting-started',category:'writing',title:'Start a series and write your first chapter',summary:'Books, chapters, paragraphs, and the library menu.',keywords:'new project manuscript library add book chapter rename beginner',body:`<p>A NovelWeaver project is a series containing books, chapters, paragraphs, and shared story threads.</p><ol><li>Open <b>More → Series and chapter settings → Manage</b> to rename your series. For a fresh workspace, use <b>Start empty project</b> there after exporting anything you want to keep.</li><li>Open the <b>Library</b> menu on a phone or use the left sidebar on a computer. <b>+ Add book</b> creates a book and its first chapter; <b>+ Chapter</b> adds a chapter to the current book.</li><li>Select a chapter, open <b>Write</b>, and type into its paragraph cards. Edits save locally as you work.</li><li>Use <b>Rename</b> to change the chapter title. Paragraph menus let you insert, move, or delete passages.</li></ol><p>Removing a book removes its chapters and associated history after confirmation. Export a project backup before removing material.</p><div class="help-actions"><button class="outline-button" data-view="write">Go to Write</button><button class="outline-button" data-action="library">Open Library</button></div>`},
  {id:'importing',category:'writing',title:'Import books or open a saved project',summary:'Add manuscripts without accidentally replacing your library.',keywords:'import open json docx word txt threads tags missing',body:`<p><b>More → Import books into library</b> adds books to your current project. Select one or several <code>.novel.json</code>, <code>.txt</code>, or <code>.docx</code> files.</p><p>NovelWeaver imports retain chapters, story-thread tags, review records, and history. Text and Word manuscripts do not contain NovelWeaver thread links; create and link threads after importing them. Word import simplifies formatting and does not preserve images, tables, footnotes, or layout.</p><p><b>More → Open a .novel.json project</b> replaces the current workspace after confirmation. Use this to restore a full project backup. Export the current workspace first.</p><p>If a book has no visible threads, check whether its source JSON actually includes thread definitions and paragraph <code>ThreadIds</code>. Importing plain text cannot reconstruct those links.</p><div class="help-actions"><button class="outline-button" data-action="import-book">Import books</button><button class="outline-button" data-action="export-project">Back up first</button></div>`},
  {id:'editing',category:'writing',title:'Editing, keyboard shortcuts, and proofreading',summary:'Paragraph controls, offline spelling, and revision history.',keywords:'enter shift backspace ctrl s keyboard spelling dictionary undo restore history',body:`<table><thead><tr><th>Action</th><th>Control</th></tr></thead><tbody><tr><td>Split the paragraph at the cursor</td><td>Enter</td></tr><tr><td>Add a line break inside a paragraph</td><td>Shift+Enter</td></tr><tr><td>Merge with the preceding paragraph</td><td>Backspace at the beginning of a paragraph</td></tr><tr><td>Download a project backup</td><td>Ctrl+S / Command+S</td></tr></tbody></table><p>The paragraph <b>More actions</b> menu contains move, insert, delete, reference, and listening controls. Use <b>View references</b> to inspect links and revision history. Restoring a revision changes the current paragraph and can flag related passages for review.</p><p><b>More → Proofread current chapter</b> checks against the bundled English word list. Add fictional names and accepted spellings through <b>Custom spelling dictionary</b>. Browser-native red underlines use a separate dictionary and may still appear. Possible misspellings are suggestions, not automatic corrections.</p><p>Each paragraph shows an <b>edit count</b>. Tap it to open revision history. Continuous typing in one paragraph counts as one edit; leaving and editing it again starts another. Applied Quill rewrites and restores count too. Counts follow the saved revision history in .novel.json backups and Drive sync. Older work can only show edits that have recorded history.</p>`},
@@ -1150,6 +1210,10 @@ document.addEventListener('click',async e=>{const mr=e.target.closest('[data-mod
  case 'add-paragraph':addParagraph();break;case 'insert-after':closeModal();addParagraph(x);break;
  case 'paragraph-speech':paragraphSpeech(x);break;
  case 'speech-defaults':speechDefaultMenu();break;
+ case 'speech-presets':speechPresetMenu();break;
+ case 'speech-preset-new':speechPresetEdit();break;
+ case 'speech-preset-edit':speechPresetEdit(x);break;
+ case 'speech-preview':speechPreview();break;
  case 'speech-defaults-narration':speechDefaultEdit('narration');break;
  case 'speech-defaults-dialogue':speechDefaultEdit('dialogue');break;
  case 'paragraph-menu':paragraphMenu(x);break;case 'link-dialog':chooseLink(x);break;case 'references':showReferences(x);break;

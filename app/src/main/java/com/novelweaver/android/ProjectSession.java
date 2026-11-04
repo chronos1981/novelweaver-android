@@ -38,6 +38,7 @@ public final class ProjectSession {
         return value instanceof String?JSONObject.quote((String)value):String.valueOf(value);
     }
     private static boolean hasWriting(JSONObject project){
+        if(project.optJSONArray("SpeechProfiles")!=null&&project.optJSONArray("SpeechProfiles").length()>0)return true;
         JSONObject speech=project.optJSONObject("SpeechDefaults");
         if(speech!=null)for(String role:new String[]{"Narration","Dialogue"}){JSONObject settings=speech.optJSONObject(role);if(settings!=null&&settings.length()>0)return true;}
         if(!"Untitled Series".equals(project.optString("Title","Untitled Series")))return true;

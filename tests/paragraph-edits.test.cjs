@@ -3,7 +3,7 @@ const html=fs.readFileSync(path.join(__dirname,'../app/src/main/assets/www/index
 let seq=0,changes=0;
 const project={Id:'series',Title:'Test',Books:[{Id:'book',Title:'Book'}],Chapters:[{Id:'chapter',BookId:'book',Title:'Chapter',Paragraphs:[{Id:'p',Text:'Original',ThreadIds:[]},{Id:'q',Text:'Other',ThreadIds:[]}]}],Threads:[],Reviews:[],History:[]};
 const badge={dataset:{editCount:'p'},textContent:'0 edits'};
-const context=vm.createContext({S:{project,editSession:new Map()},id:()=>`id-${++seq}`,now:()=>new Date().toISOString(),h:String,$$:()=>[badge],linked:()=>[],changed(){changes++}});
+const context=vm.createContext({document:{addEventListener(){}},S:{project,editSession:new Map()},id:()=>`id-${++seq}`,now:()=>new Date().toISOString(),h:String,$$:()=>[badge],linked:()=>[],changed(){changes++}});
 vm.runInContext(fs.readFileSync(path.join(__dirname,'../tools/speech-tags.js'),'utf8')+html.slice(html.indexOf('function cleanCover('),html.indexOf('function bookCovers('))+html.slice(html.indexOf('function cleanProject('),html.indexOf('const bookById='))+html.slice(html.indexOf('function paragraphEditCounts('),html.indexOf('function resolveReview('))+'\nglobalThis.api={editParagraph,paragraphEditCount,paragraphEditCounts,cleanProject,paragraphEditBadge};',context);
 const {editParagraph,paragraphEditCount,paragraphEditCounts,cleanProject,paragraphEditBadge}=context.api;
 assert.equal(paragraphEditCount('p'),0);

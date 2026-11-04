@@ -8,6 +8,14 @@ import java.util.*;
 import static org.junit.Assert.*;
 
 public class ProjectSessionTest {
+    @Test public void voicePresetOnlyWorkspaceHasRecovery() throws Exception{
+        String blank=new JSONObject().put("Title","Untitled Series").put("Books",new JSONArray()).put("Chapters",new JSONArray()).put("SpeechProfiles",new JSONArray().put(new JSONObject().put("Id","male").put("Name","Narrator").put("Gender","male").put("Voice","installed-voice"))).toString();
+        session.startNew(blank);
+        ProjectSession launched=new ProjectSession(directory,docs);JSONObject info=launched.startupInfo();
+        assertEquals(1,info.getJSONArray("recoveries").length());
+        JSONObject restored=launched.openRecovery(info.getJSONArray("recoveries").getJSONObject(0).getString("id")).getJSONObject("project");
+        assertEquals("male",restored.getJSONArray("SpeechProfiles").getJSONObject(0).getString("Gender"));
+    }
     @Test public void speechSettingsClampAndReset() throws Exception{
         assertEquals(1f,Narrator.setting(new JSONObject(),"pitch"),0f);
         assertEquals(.5f,Narrator.setting(new JSONObject().put("pitch",.1),"pitch"),0f);
