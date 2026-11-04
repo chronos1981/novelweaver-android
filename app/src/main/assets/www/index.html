@@ -497,7 +497,7 @@ window.NW_LEXICON_GZIP="H4sIACaB4GoC/3SdaXasONOt/78TYVw4kTNVBpRFYx88+qvYe0dInPru
  const browser=()=>typeof window.speechSynthesis!=='undefined'&&typeof window.SpeechSynthesisUtterance==='function';
  function voices(){if(native()){try{return JSON.parse(window.NovelWeaverNative.ttsVoices()||'[]')}catch(e){return []}}
  if(!browser())return [];
- return speechSynthesis.getVoices().map(v=>({id:v.voiceURI,name:v.name,lang:v.lang}));}
+ return speechSynthesis.getVoices().map(v=>({id:v.voiceURI,name:v.name,lang:v.lang,local:v.localService}));}
  function stop(){++sequence;active=null;if(native())window.NovelWeaverNative.ttsStop();else if(browser())speechSynthesis.cancel();}
  function speak(text,options){stop();const key=sequence;active={key,onDone:options.onDone,onError:options.onError,options,text};
  if(native()){window.NovelWeaverNative.ttsSpeak(text,options.voice||'',options.rate||1,String(key),options.pitch||1);return;}
@@ -533,6 +533,52 @@ const mkBook=(title='New Book')=>({Id:id(),Title:title});
 const mkChapter=(bookId,title='New Chapter')=>({Id:id(),BookId:bookId,Title:title,Paragraphs:[mkPara()]});
 const mkPara=(text='',threadIds=[])=>({Id:id(),Text:text,ThreadIds:[...threadIds]});
 function defaultProject(){const p=P(),b=mkBook('Book One');p.Books.push(b);p.Chapters.push(mkChapter(b.Id,'Chapter 1'));return p}
+// Voice browsing preferences are local to the device, separate from saved voices.
+function voiceLanguage(voice){
+ const lang=String(voice.lang||'').trim().replace(/_/g,'-');
+ try{return Intl.getCanonicalLocales(lang)[0]||''}catch(e){return lang}
+}
+function voiceConnection(voice){
+ const local=typeof voice.local==='boolean'?voice.local:voice.localService;
+ return local===true?'local':local===false?'online':'unknown';
+}
+function voiceFiltersState(){
+ if(!voiceFiltersState.value){let saved={};try{saved=JSON.parse(localStorage.getItem('novelweaver.voiceFilters.v1')||'{}')}catch(e){}
+  voiceFiltersState.value={language:typeof saved.language==='string'?saved.language:'',connection:['local','online','unknown'].includes(saved.connection)?saved.connection:''};
+ }
+ return voiceFiltersState.value;
+}
+function voiceMatches(voice,filters=voiceFiltersState()){
+ return (!filters.language||voiceLanguage(voice).toLowerCase()===filters.language.toLowerCase())&&(!filters.connection||voiceConnection(voice)===filters.connection);
+}
+function voiceOptions(selected='',placeholder='Use defaults'){
+ const voices=window.NWTTS?.voices()||[],list=voices.filter(v=>voiceMatches(v)),current=voices.find(v=>v.id===selected);
+ const option=(v,outside=false)=>`<option value="${h(v.id)}" ${v.id===selected?'selected':''}>${h(v.name)} · ${h(voiceLanguage(v)||'Language unknown')} · ${voiceConnection(v)==='local'?'Local':voiceConnection(v)==='online'?'Online':'Connection unknown'}${outside?' · selected, outside filter':''}</option>`;
+ return `<option value="" ${!selected?'selected':''}>${h(placeholder)}</option>`+
+  (selected&&!current?`<option value="${h(selected)}" selected>Unavailable on this device · ${h(selected)}</option>`:'')+
+  (current&&!voiceMatches(current)?option(current,true):'')+list.map(v=>option(v)).join('')+
+  (!list.length?'<option disabled>No voices match these filters</option>':'');
+}
+function voiceFilterControls(){
+ const filters=voiceFiltersState(),voices=window.NWTTS?.voices()||[],languages=[...new Set(voices.map(voiceLanguage).filter(Boolean))];
+ if(filters.language&&!languages.includes(filters.language))languages.push(filters.language);
+ languages.sort((a,b)=>a.localeCompare(b));
+ return `<div class="reader-toolbar voice-filter-controls" data-voice-filters><label>Language<select data-voice-filter="language"><option value="">All languages</option>${languages.map(lang=>`<option value="${h(lang)}" ${lang===filters.language?'selected':''}>${h(lang)}</option>`).join('')}</select></label><label>Connection<select data-voice-filter="connection"><option value="">Local &amp; online</option>${[['local','Local (offline)'],['online','Online (network)'],['unknown','Unknown']].map(([value,label])=>`<option value="${value}" ${filters.connection===value?'selected':''}>${label}</option>`).join('')}</select></label></div>`;
+}
+function refreshVoiceSelectors(){
+ for(const control of $$('[data-voice-filters]'))control.outerHTML=voiceFilterControls();
+ for(const select of $$('select[data-speech-voice],#listen-voice')){
+  const selected=select.value;select.innerHTML=voiceOptions(selected,select.id==='listen-voice'?'Device default':'Use defaults');select.value=selected;
+ }
+}
+document.addEventListener('change',event=>{
+ const key=event.target.dataset.voiceFilter;if(!['language','connection'].includes(key))return;
+ const state=voiceFiltersState();state[key]=event.target.value;
+ try{localStorage.setItem('novelweaver.voiceFilters.v1',JSON.stringify(state))}catch(e){}
+ refreshVoiceSelectors();
+});
+window.addEventListener('nw-voices',refreshVoiceSelectors);
+
 // Speech metadata belongs to the project, never to the manuscript text.
 function cleanSpeechSettings(raw){
  if(!raw||typeof raw!=='object')return {};
@@ -589,8 +635,7 @@ function speechAvailableOptions(options){
 }
 function speechPlaybackOptions(pid,role=null){return speechAvailableOptions(speechResolve(locate(pid)?.paragraph,S.listen,S.project.SpeechDefaults,role))}
 function speechFields(s={},presets=true,prefix='speech'){
- const voices=window.NWTTS?.voices()||[],missing=s.Voice&&!voices.some(v=>v.id===s.Voice);
- return `${presets?`<label class="form-label" for="${prefix}-profile">Saved voice preset</label><select class="text-input" id="${prefix}-profile"><option value="">Use defaults / custom</option>${s.ProfileId&&!S.project.SpeechProfiles?.some(p=>p.Id===s.ProfileId)?`<option selected value="${h(s.ProfileId)}">Unavailable preset</option>`:''}${(S.project.SpeechProfiles||[]).map(p=>`<option value="${h(p.Id)}" ${s.ProfileId===p.Id?'selected':''}>${h(p.Gender==='male'?'Male':p.Gender==='female'?'Female':'Other')} · ${h(p.Name)}</option>`).join('')}</select><p class="tiny">Choose a saved male/female voice, or set custom overrides below.</p>`:''}<label class="form-label" for="${prefix}-voice">Voice</label><select class="text-input" id="${prefix}-voice"><option value="">Use defaults</option>${missing?`<option value="${h(s.Voice)}" selected>Unavailable on this device · ${h(s.Voice)}</option>`:''}${voices.map(v=>`<option value="${h(v.id)}" ${s.Voice===v.id?'selected':''}>${h(v.name)}${v.lang?' ('+h(v.lang)+')':''}</option>`).join('')}</select><div class="reader-toolbar"><label>Speed (0.5–2×)<input class="text-input" type="number" id="${prefix}-rate" min="0.5" max="2" step="0.05" placeholder="Use defaults" value="${s.Rate||''}"></label><label>Pitch (0.5–2)<input class="text-input" type="number" id="${prefix}-pitch" min="0.5" max="2" step="0.05" placeholder="Use defaults" value="${s.Pitch||''}"></label></div><div class="item-actions"><button class="outline-button" data-action="speech-preview" data-id="${prefix}">Preview voice</button>${presets?'<button class="outline-button" data-action="speech-presets">Manage saved voices</button>':''}</div>`;
+ return `${presets?`<label class="form-label" for="${prefix}-profile">Saved voice preset</label><select class="text-input" id="${prefix}-profile"><option value="">Use defaults / custom</option>${s.ProfileId&&!S.project.SpeechProfiles?.some(p=>p.Id===s.ProfileId)?`<option selected value="${h(s.ProfileId)}">Unavailable preset</option>`:''}${(S.project.SpeechProfiles||[]).map(p=>`<option value="${h(p.Id)}" ${s.ProfileId===p.Id?'selected':''}>${h(p.Gender==='male'?'Male':p.Gender==='female'?'Female':'Other')} · ${h(p.Name)}</option>`).join('')}</select><p class="tiny">Choose a saved male/female voice, or set custom overrides below.</p>`:''}${voiceFilterControls()}<label class="form-label" for="${prefix}-voice">Voice</label><select class="text-input" data-speech-voice id="${prefix}-voice">${voiceOptions(s.Voice||'')}</select><div class="reader-toolbar"><label>Speed (0.5–2×)<input class="text-input" type="number" id="${prefix}-rate" min="0.5" max="2" step="0.05" placeholder="Use defaults" value="${s.Rate||''}"></label><label>Pitch (0.5–2)<input class="text-input" type="number" id="${prefix}-pitch" min="0.5" max="2" step="0.05" placeholder="Use defaults" value="${s.Pitch||''}"></label></div><div class="item-actions"><button class="outline-button" data-action="speech-preview" data-id="${prefix}">Preview voice</button>${presets?'<button class="outline-button" data-action="speech-presets">Manage saved voices</button>':''}</div>`;
 }
 function speechReadFields(prefix='speech'){
  const s={},voice=$('#'+prefix+'-voice').value,profile=$('#'+prefix+'-profile')?.value;if(profile)s.ProfileId=profile;if(voice)s.Voice=voice;
@@ -906,11 +951,11 @@ function listenLoad(){try{const v=JSON.parse(localStorage.getItem(listenStoreKey
 function listenSave(){try{localStorage.setItem(listenStoreKey,JSON.stringify({rate:S.listen.rate,voice:S.listen.voice,scope:S.listen.scope,rules:S.listen.rules,bookmarks:S.listen.bookmarks||{}}))}catch(e){console.warn('TTS settings cannot be saved',e)}}
 function listenQueue(){const book=activeBook();if(!book)return[];let chapters=S.project.Chapters.filter(c=>c.BookId===book.Id);if(S.listen.scope==='chapter')chapters=chapters.filter(c=>c.Id===S.chapterId);return chapters.flatMap(c=>c.Paragraphs.filter(p=>p.Text.trim()).map(p=>({id:p.Id,chapter:c.Title,chapterId:c.Id,text:p.Text})));}
 function listenPrepare(){const book=activeBook();if(!book)return;const items=listenQueue();S.listen.queue=items;const bookmark=(S.listen.bookmarks||{})[book.Id];const ix=items.findIndex(x=>x.id===S.listen.pid);const bi=items.findIndex(x=>x.id===bookmark);S.listen.index=ix>=0?ix:bi>=0?bi:0;if(items.length)S.listen.pid=items[S.listen.index].id;}
-function listenVisibleVoices(){const vs=window.NWTTS?.voices()||[];return '<option value="">Device default</option>'+vs.map(v=>`<option value="${h(v.id)}" ${v.id===S.listen.voice?'selected':''}>${h(v.name)}${v.lang?' ('+h(v.lang)+')':''}</option>`).join('')}
+function listenVisibleVoices(){return voiceOptions(S.listen.voice,'Device default')}
 function renderListen(){const b=activeBook();if(!b)return pageTitle('LISTEN','No book selected','Select a book to begin.');listenPrepare();const items=S.listen.queue,cur=items[S.listen.index],chapters=S.project.Chapters.filter(c=>c.BookId===b.Id),supported=window.NWTTS?.available()||false;
  return pageTitle('NARRATION','Listen · '+b.Title,'Read aloud using installed voices; pronunciation rules never change your manuscript.')+
  `<section class="listen-panel"><div class="reader-toolbar"><label>Range<select id="listen-scope"><option value="chapter" ${S.listen.scope==='chapter'?'selected':''}>Current chapter</option><option value="book" ${S.listen.scope==='book'?'selected':''}>Whole book</option></select></label><label>Start chapter<select id="listen-chapter">${chapters.map(c=>`<option value="${h(c.Id)}" ${c.Id===S.chapterId?'selected':''}>${h(c.Title)}</option>`).join('')}</select></label></div>`+
- `<div class="reader-toolbar"><label>Installed voice<select id="listen-voice">${listenVisibleVoices()}</select></label><label>Speed: <output id="listen-rate-label">${S.listen.rate.toFixed(2)}×</output><input type="range" id="listen-rate" min="0.65" max="1.8" step="0.05" value="${S.listen.rate}"></label></div>`+
+ `<div class="reader-toolbar">${voiceFilterControls()}<label>Installed voice<select id="listen-voice">${listenVisibleVoices()}</select></label><label>Speed: <output id="listen-rate-label">${S.listen.rate.toFixed(2)}×</output><input type="range" id="listen-rate" min="0.65" max="1.8" step="0.05" value="${S.listen.rate}"></label></div>`+
  `<div class="listen-controls"><button class="outline-button" data-action="listen-prev" title="Previous paragraph">◀◀</button><button class="primary-button" id="listen-play" data-action="listen-play">${S.listen.playing?'❚❚ Pause':S.listen.paused?'▶ Resume':'▶ Play'}</button><button class="outline-button" data-action="listen-next" title="Next paragraph">▶▶</button><button class="outline-button" data-action="listen-stop">■ Stop</button></div>`+
  `<p id="listen-status" class="reader-stats" role="status">${supported?'Ready to play offline if a local voice is installed.':'No speech engine found. On Android use the native app, or install offline browser voices.'}</p><div class="reader-stats">${items.length.toLocaleString()} paragraphs in range · <span id="listen-position">${items.length?S.listen.index+1:0} / ${items.length}</span></div>`+
  `<div class="listen-current"><div class="small-label" id="listen-chapter-label">${h(cur?.chapter||'No text')}</div><button type="button" id="listen-paragraph" class="listen-excerpt listen-tap" data-action="listen-edit" title="Tap to edit this paragraph">${h(cur?.text||'Add some manuscript text to begin.')}</button><div class="item-actions"><button class="outline-button" data-action="listen-edit">✎ Edit this paragraph</button><button class="outline-button" data-action="listen-pronunciations">Pronunciations</button><button class="outline-button" data-action="paragraph-speech" data-id="${h(cur?.id||'')}">Paragraph speech tag</button><button class="outline-button" data-action="speech-defaults">Narration, dialogue &amp; saved voices</button></div></div>`+

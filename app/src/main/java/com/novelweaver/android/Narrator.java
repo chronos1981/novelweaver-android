@@ -28,7 +28,7 @@ final class Narrator {
     }
     JSONArray voices(){
         JSONArray list=new JSONArray();if(!ready)return list;
-        try{for(Voice v:tts.getVoices())list.put(new JSONObject().put("id",v.getName()).put("name",v.getName()+(v.isNetworkConnectionRequired()?" (online)":"")).put("lang",v.getLocale().toLanguageTag()));}catch(Exception ignored){}
+        try{for(Voice v:tts.getVoices())list.put(new JSONObject().put("id",v.getName()).put("name",v.getName()).put("local",!v.isNetworkConnectionRequired()).put("lang",v.getLocale().toLanguageTag()));}catch(Exception ignored){}
         return list;
     }
     private void sendVoices(){try{events.post(new JSONObject().put("type","voices").put("voices",voices()));}catch(Exception ignored){}}

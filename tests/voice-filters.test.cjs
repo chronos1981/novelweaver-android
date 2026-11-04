@@ -1,0 +1,20 @@
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const root=path.join(__dirname,'..'),source=fs.readFileSync(path.join(root,'tools/voice-filters.js'),'utf8');
+const voices=[{id:'us-local',name:'US local',lang:'en-US',local:true},{id:'us-online',name:'US online',lang:'en-US',local:false},{id:'uk-local',name:'UK local',lang:'en-GB',local:true},{id:'de-online',name:'German',lang:'de-DE',local:false},{id:'unknown',name:'Unknown',lang:'en-US'}];
+let storage={},change,voiceEvent;const select={id:'listen-voice',value:'uk-local',innerHTML:''};
+function context(){return vm.createContext({Intl,window:{NWTTS:{voices:()=>voices},addEventListener:(name,fn)=>voiceEvent=fn},document:{addEventListener:(name,fn)=>change=fn},localStorage:{getItem:key=>storage[key],setItem:(key,value)=>storage[key]=value},h:s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),$$:selector=>selector==='[data-voice-filters]'?[]:[select]});}
+let c=context();vm.runInContext(source+'globalThis.api={voiceLanguage,voiceConnection,voiceMatches,voiceOptions,voiceFilterControls,voiceFiltersState};',c);let a=c.api;
+assert.equal(a.voiceLanguage({lang:'en_us'}),'en-US');assert.equal(a.voiceConnection({localService:true}),'local');assert.equal(a.voiceConnection(voices[4]),'unknown');
+assert.match(a.voiceFilterControls(),/en-US/);assert.match(a.voiceFilterControls(),/en-GB/);
+change({target:{dataset:{voiceFilter:'language'},value:'en-US'}});change({target:{dataset:{voiceFilter:'connection'},value:'local'}});
+assert.equal(select.value,'uk-local','Filtering never changes the selection');assert.match(select.innerHTML,/selected, outside filter/);
+let options=a.voiceOptions('');assert.match(options,/us-local/);assert.doesNotMatch(options,/us-online|uk-local|de-online|value="unknown"/);
+change({target:{dataset:{voiceFilter:'connection'},value:'online'}});options=a.voiceOptions('');assert.match(options,/us-online/);assert.doesNotMatch(options,/us-local|uk-local|de-online/);
+change({target:{dataset:{voiceFilter:'language'},value:'fr-FR'}});assert.match(a.voiceOptions('us-local'),/No voices match/);assert.match(a.voiceOptions('us-local'),/selected, outside filter/);
+assert.match(a.voiceOptions('missing'),/Unavailable on this device/);assert.equal(select.value,'uk-local');
+voiceEvent();assert.equal(select.value,'uk-local','Voice discovery must preserve the current selection');
+c=context();vm.runInContext(source+'globalThis.state=voiceFiltersState();',c);assert.equal(c.state.language,'fr-FR');assert.equal(c.state.connection,'online');
+storage['novelweaver.voiceFilters.v1']='broken';c=context();vm.runInContext(source+'globalThis.state=voiceFiltersState();',c);assert.equal(c.state.language,'');assert.equal(c.state.connection,'');
+const html=fs.readFileSync(path.join(root,'app/src/main/assets/www/index.html'),'utf8'),native=fs.readFileSync(path.join(root,'app/src/main/java/com/novelweaver/android/Narrator.java'),'utf8');
+assert.match(html,/data-speech-voice/);assert.match(html,/local:v.localService/);assert.match(native,/put\("local",!v.isNetworkConnectionRequired\(\)\)/);
+console.log('PASS: language/local/online filters, canonical locales, unknown metadata, empty matches, selected/missing voice retention, late voice discovery, saved filters and native/browser connection metadata.');

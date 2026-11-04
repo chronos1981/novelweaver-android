@@ -1,4 +1,4 @@
-# NovelWeaver for Android 2.0.7
+# NovelWeaver for Android 2.0.8
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
@@ -79,6 +79,17 @@ The Windows app, web app and Android app share `.novel.json` data. Covers,
 threads, alerts, edit counts and revision history travel with that file. Web
 browser storage itself is not automatically imported; open a project file
 exported/saved by that edition.
+
+## Voice filters
+
+Every installed-voice selector offers **Language** (for example en-US or en-GB)
+and **Connection** filters: Local (offline), Online (network), both, or Unknown.
+They are available in Listen, paragraph narrator/dialogue settings, saved voice
+editors, and project defaults. Filters are remembered on this device and shared
+between selectors. They do not change saved voice settings or playback. An
+existing selection outside the filters remains visible with a note. Missing
+voices and empty result lists are labelled explicitly. Connection type comes
+from the speech engine’s metadata; unknown metadata is never guessed.
 
 ## Saved voices and dialogue playback
 
@@ -198,6 +209,7 @@ must be reviewed when upstream changes. Android-only secrets and file operations
 remain in the native Java host. For shared JavaScript checks, with Node installed:
 
 ```sh
+node tests/voice-filters.test.cjs
 node tests/speech-tags.test.cjs
 node tests/startup.test.cjs
 node tests/android-adapter.test.cjs

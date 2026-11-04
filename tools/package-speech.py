@@ -7,7 +7,7 @@ def replace(old,new):
  global s
  if old not in s:raise SystemExit('Speech integration point changed: '+old[:90])
  s=s.replace(old,new)
-replace('function cleanProject(raw){',(root/'tools/speech-tags.js').read_text()+'\nfunction cleanProject(raw){')
+replace('function cleanProject(raw){',(root/'tools/voice-filters.js').read_text()+'\n'+(root/'tools/speech-tags.js').read_text()+'\nfunction cleanProject(raw){')
 replace('Books:[],Chapters:[],Threads:[],Reviews:[],History:[]};\n p.Books=', 'Books:[],Chapters:[],Threads:[],Reviews:[],History:[],SpeechDefaults:cleanSpeechDefaults(raw.SpeechDefaults),SpeechProfiles:cleanSpeechProfiles(raw.SpeechProfiles)};\n p.Books=')
 replace('ThreadIds:Array.isArray(q.ThreadIds)?q.ThreadIds.map(String):[]}', 'ThreadIds:Array.isArray(q.ThreadIds)?q.ThreadIds.map(String):[],Speech:cleanSpeechTag(q.Speech)}')
 replace('ttsSpeak(text,options.voice||\'\',options.rate||1,String(key))', 'ttsSpeak(text,options.voice||\'\',options.rate||1,String(key),options.pitch||1)')
@@ -27,4 +27,8 @@ replace('...p,Id:remap(p.Id),ThreadIds:p.ThreadIds.map(remap)', '...p,Speech:spe
 replace('const prev=f.chapter.Paragraphs[f.index-1];editParagraph', 'const prev=f.chapter.Paragraphs[f.index-1];if(JSON.stringify(cleanSpeechTag(prev.Speech))!==JSON.stringify(cleanSpeechTag(f.paragraph.Speech))){toast(\'Speech tags differ. Give both paragraphs the same tag before merging.\');return}editParagraph')
 replace('const HELP_TOPICS=[', '''const HELP_TOPICS=[
  {id:'speech-tags',category:'writing',title:'Narration and dialogue speech tags',summary:'Assign paragraph roles, installed voices, speed and pitch.',keywords:'tts voice speech dialogue narration speaker pitch speed tags',body:`<p>In Write, open a paragraph’s <b>⋯ → Voice &amp; speech tag</b>. Set the Narrator (outside quotes) and Dialogue (inside quotes) independently. Each can use a saved preset or an installed voice, speed and pitch. Save voices. Blank values inherit the matching project defaults. Its badge opens both voice settings again. Remove tag returns to narration defaults.</p><p>Use <b>Listen → Narration &amp; dialogue defaults</b> to set shared voices and settings. Blank paragraph fields inherit that role’s settings. Blank role settings inherit the Listen voice and speed; normal pitch is 1. Untagged text uses narration outside quotes and dialogue inside quotes.</p><p>Matched straight or curly quotes use dialogue voices; narration outside quotes uses narrator settings in the same paragraph. Contractions and apostrophes are not dialogue. Unmatched quotes stay with the narrator. Open Saved voices to preview and save named Male/Female presets, then reuse them in paragraph tags or role defaults. Splitting copies the tag; merging requires matching tags. A speaker name is a label; choose a saved preset or installed voice. Speech tags travel with the .novel.json project, while voice availability depends on the device. Missing voices fall back with a warning. TXT, DOCX and EPUB exports contain the manuscript text without speech tags.</p>`},''')
+a=s.index('function listenVisibleVoices(){');b=s.index('function renderListen()',a)
+s=s[:a]+"function listenVisibleVoices(){return voiceOptions(S.listen.voice,'Device default')}\n"+s[b:]
+replace('<label>Installed voice<select id="listen-voice">', '${voiceFilterControls()}<label>Installed voice<select id="listen-voice">')
+replace('({id:v.voiceURI,name:v.name,lang:v.lang})','({id:v.voiceURI,name:v.name,lang:v.lang,local:v.localService})')
 p.write_text(s)

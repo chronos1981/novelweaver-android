@@ -1,5 +1,13 @@
 # Completed validation
 
+Version 2.0.8 adds shared device-local language and connection voice filters.
+JavaScript checks cover canonical locales, local/online/unknown metadata,
+empty matches, selected and missing voice retention, late voice discovery and
+filter persistence. A simulated Android host at 393 × 820 verified en-US + Local
+results and retaining a selected local voice when switching to Online. Native
+voice connection metadata uses isNetworkConnectionRequired. No real device
+voice/network test was performed.
+
 Version 2.0.7 provides independent paragraph narrator and dialogue settings.
 Tests cover legacy-tag compatibility, storing both roles, resolving each preset,
 per-role speed/pitch, mixed playback, resetting narrator to defaults and importing
