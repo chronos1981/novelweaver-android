@@ -38,11 +38,13 @@ public final class ProjectSession {
         return value instanceof String?JSONObject.quote((String)value):String.valueOf(value);
     }
     private static boolean hasWriting(JSONObject project){
+        JSONObject speech=project.optJSONObject("SpeechDefaults");
+        if(speech!=null)for(String role:new String[]{"Narration","Dialogue"}){JSONObject settings=speech.optJSONObject(role);if(settings!=null&&settings.length()>0)return true;}
         if(!"Untitled Series".equals(project.optString("Title","Untitled Series")))return true;
         for(String key:new String[]{"History","Threads","Reviews"})if(project.optJSONArray(key)!=null&&project.optJSONArray(key).length()>0)return true;
         JSONArray books=project.optJSONArray("Books"),chapters=project.optJSONArray("Chapters");
         if(books!=null){if(books.length()>1)return true;for(int i=0;i<books.length();i++){JSONObject b=books.optJSONObject(i);if(b!=null&&(!"Book One".equals(b.optString("Title","Book One"))||!b.optString("Author","").isEmpty()||!b.isNull("FrontCover")||!b.isNull("BackCover")))return true;}}
-        if(chapters!=null){if(chapters.length()>1)return true;for(int i=0;i<chapters.length();i++){JSONObject c=chapters.optJSONObject(i);if(c==null)continue;if(!"Chapter 1".equals(c.optString("Title","Chapter 1")))return true;JSONArray paragraphs=c.optJSONArray("Paragraphs");if(paragraphs!=null)for(int j=0;j<paragraphs.length();j++){JSONObject p=paragraphs.optJSONObject(j);if(p!=null&&!p.optString("Text","").trim().isEmpty())return true;}}}
+        if(chapters!=null){if(chapters.length()>1)return true;for(int i=0;i<chapters.length();i++){JSONObject c=chapters.optJSONObject(i);if(c==null)continue;if(!"Chapter 1".equals(c.optString("Title","Chapter 1")))return true;JSONArray paragraphs=c.optJSONArray("Paragraphs");if(paragraphs!=null)for(int j=0;j<paragraphs.length();j++){JSONObject p=paragraphs.optJSONObject(j);if(p!=null&&(!p.optString("Text","").trim().isEmpty()||p.optJSONObject("Speech")!=null))return true;}}}
         return false;
     }
     private synchronized void archiveRecovery(String replacingWith) throws Exception {

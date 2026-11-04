@@ -1,5 +1,12 @@
 # Completed validation
 
+Version 2.0.5 adds project speech defaults and paragraph voice tags. JavaScript
+checks cover save/load, role and paragraph precedence, switching voice/rate/pitch,
+missing voices, bounds, split inheritance, merge protection and unchanged text
+and revision counts. A phone-sized browser check with a simulated Android host
+verified saving and reopening a Dialogue tag, speaker label, voice, rate and pitch.
+Real voice quality and engine support still require an Android device check.
+
 Version 2.0.4 adds an explicit startup chooser. New empty project is unlinked;
 Open last project reads the document provider afresh. Cached manuscript loading
 and automatic recovery on startup are disabled. Explicit recovery remains
@@ -33,7 +40,7 @@ uses the existing save-before-replace flow and native new-project file isolation
   certificate trust, dependency updates and platform compatibility advisories.
   No TLS certificate error is bypassed and remote HTTP hosts are rejected by the
   native request policy.
-- All 16 Java unit tests passed: initial recovery, first save, autosave, previous
+- All 17 Java unit tests passed: initial recovery, first save, autosave, previous
   backups, unchanged-save backup retention, external conflicts, stale decisions,
   continued recovery during conflict, restart conflicts, missing documents,
   metadata/cover/history preservation, new-project isolation, invalid opens,

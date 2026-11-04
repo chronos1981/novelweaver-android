@@ -8,6 +8,12 @@ import java.util.*;
 import static org.junit.Assert.*;
 
 public class ProjectSessionTest {
+    @Test public void speechSettingsClampAndReset() throws Exception{
+        assertEquals(1f,Narrator.setting(new JSONObject(),"pitch"),0f);
+        assertEquals(.5f,Narrator.setting(new JSONObject().put("pitch",.1),"pitch"),0f);
+        assertEquals(2f,Narrator.setting(new JSONObject().put("rate",9),"rate"),0f);
+        assertEquals(.8f,Narrator.setting(new JSONObject().put("pitch",.8),"pitch"),.001f);
+    }
     private File directory;
     private final Map<String,String> files=new HashMap<>();
     private ProjectSession session;

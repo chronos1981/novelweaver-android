@@ -26,7 +26,7 @@ async function desktopInitialize() {
   if (initial.speechAvailable) {
     window.NovelWeaverNative = {
       ttsVoices: () => JSON.stringify(window.AndroidVoices || initial.voices || []),
-      ttsSpeak: (text, voice, rate, key) => DesktopHost.call('speak', {text,voice,rate,key}).catch(e => NWTTS.nativeComplete(key,e.message)),
+      ttsSpeak: (text, voice, rate, key, pitch=1) => DesktopHost.call('speak', {text,voice,rate,key,pitch}).catch(e => NWTTS.nativeComplete(key,e.message)),
       ttsStop: () => DesktopHost.call('speechStop').catch(console.warn),
       ttsPause: () => DesktopHost.call('speechPause').catch(console.warn)
     };

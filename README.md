@@ -1,4 +1,4 @@
-# NovelWeaver for Android 2.0.4
+# NovelWeaver for Android 2.0.5
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
@@ -79,6 +79,25 @@ The Windows app, web app and Android app share `.novel.json` data. Covers,
 threads, alerts, edit counts and revision history travel with that file. Web
 browser storage itself is not automatically imported; open a project file
 exported/saved by that edition.
+
+## Paragraph speech tags
+
+In Write, open a paragraph’s **⋯ → Voice & speech tag**. Choose Narration or
+Dialogue, optionally label the speaker, and select an installed voice, speed
+(0.5–2×) and pitch (0.5–2, with 1 normal). A badge opens the saved tag again.
+Use **Listen → Narration & dialogue defaults** for shared role settings.
+Blank paragraph fields inherit role defaults; blank role fields inherit the
+Listen voice and speed, with normal pitch. A speaker name is a label, so choose
+its voice explicitly.
+
+Tags apply to whole paragraphs. Split mixed narration and dialogue to assign
+separate voices. Splitting copies the tag; merging requires matching tags.
+Tags and role defaults persist in `.novel.json` and travel with project files.
+Imported books retain their role defaults as explicit paragraph settings.
+Unavailable voices fall back with a warning to the Listen voice or device
+default. Speed/pitch results depend on the installed speech engine. Voice tags
+are not included in the spoken text, TXT, DOCX or EPUB manuscript exports.
+Older app editions may discard this new metadata when they save a project.
 
 ## Features
 
@@ -163,6 +182,7 @@ must be reviewed when upstream changes. Android-only secrets and file operations
 remain in the native Java host. For shared JavaScript checks, with Node installed:
 
 ```sh
+node tests/speech-tags.test.cjs
 node tests/startup.test.cjs
 node tests/android-adapter.test.cjs
 node tests/bridge.test.cjs

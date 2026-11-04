@@ -15,7 +15,7 @@ final class Narrator {
     private String text="",voice="";
     private volatile int offset;
     private int base,sequence;
-    private float rate=1;
+    private float rate=1,pitch=1;
     Narrator(Context context,Events events){
         this.events=events;
         tts=new TextToSpeech(context,status->{ready=status==TextToSpeech.SUCCESS;sendVoices();});
@@ -34,15 +34,16 @@ final class Narrator {
     private void sendVoices(){try{events.post(new JSONObject().put("type","voices").put("voices",voices()));}catch(Exception ignored){}}
     void speak(JSONObject p) throws Exception {
         if(!ready)throw new Exception("Speech engine is unavailable or still starting. Check Android text-to-speech settings.");
-        stop();text=p.getString("text");voice=p.optString("voice","");rate=(float)p.optDouble("rate",1);key=p.getString("key");offset=0;play();
+        stop();text=p.getString("text");voice=p.optString("voice","");rate=setting(p,"rate");pitch=setting(p,"pitch");key=p.getString("key");offset=0;play();
     }
     private void play() throws Exception {
         if(voice.isEmpty())tts.setLanguage(Locale.getDefault());
         else {boolean found=false;for(Voice v:tts.getVoices())if(v.getName().equals(voice)){tts.setVoice(v);found=true;break;}if(!found)throw new Exception("The selected speech voice is no longer installed.");}
-        tts.setSpeechRate(Math.max(.25f,Math.min(4f,rate)));paused=false;base=Math.min(offset,text.length());token=key+":"+(++sequence);
+        tts.setSpeechRate(rate);tts.setPitch(pitch);paused=false;base=Math.min(offset,text.length());token=key+":"+(++sequence);
         if(tts.speak(text.substring(base),TextToSpeech.QUEUE_FLUSH,new Bundle(),token)==TextToSpeech.ERROR)throw new Exception("Android could not start speech playback.");
     }
     void pause(){paused=true;token=null;tts.stop();}
+    static float setting(JSONObject p,String name){double value=p.optDouble(name,1);return Double.isNaN(value)||Double.isInfinite(value)?1:(float)Math.max(.5,Math.min(2,value));}
     void resume() throws Exception {if(paused&&key!=null)play();}
     void stop(){key=null;token=null;paused=false;tts.stop();}
     private void complete(String id,String error){
