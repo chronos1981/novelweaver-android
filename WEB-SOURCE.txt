@@ -1,0 +1,6 @@
+Web source: chronos1981/novelweaver
+Commit: 14b6e3706ef1e2a51fe520f5d162fbefd4e139b2
+Source SHA256: 2f826bc69ad2bd5c5edf84cceeea51303a73a44fec176aea2b813f7283a0c4e5
+Android adapter: tools/package-web.py and tools/desktop-integration.js
+
+Android host uses the same paragraph, threads, history, reader, covers, exports and Quill engine.

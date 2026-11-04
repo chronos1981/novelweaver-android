@@ -1,0 +1,34 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'com.novelweaver.android'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.novelweaver.android'
+        minSdk 26
+        targetSdk 35
+        versionCode 24
+        versionName '2.0.4'
+    }
+    signingConfigs {
+        personalDevelopment {
+            storeFile file('../signing/novelweaver-development.keystore')
+            storePassword 'android'
+            keyAlias 'novelweaver-development'
+            keyPassword 'android'
+        }
+    }
+    buildTypes {
+        debug {
+            if (file('../signing/novelweaver-development.keystore').exists()) {
+                signingConfig signingConfigs.personalDevelopment
+            }
+        }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    testOptions { unitTests.returnDefaultValues = true }
+}
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
+}

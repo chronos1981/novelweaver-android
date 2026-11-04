@@ -1,0 +1,53 @@
+{
+  "Id": "32396e7d-3da0-48b5-b362-54f8783f4900",
+  "Title": "Example \u2014 Interconnected Novels",
+  "Books": [
+    {
+      "Id": "1f77219f-80b5-47a2-b204-5ef676c8e16e",
+      "Title": "Book One \u2014 The Arrival"
+    },
+    {
+      "Id": "d89b9fd1-1210-42c7-b25f-5d8ba2ea88bb",
+      "Title": "Book Two \u2014 The Investigation"
+    }
+  ],
+  "Chapters": [
+    {
+      "Id": "0c8de9de-4e75-4527-939c-27589bd18e8a",
+      "BookId": "1f77219f-80b5-47a2-b204-5ef676c8e16e",
+      "Title": "Chapter 1",
+      "Paragraphs": [
+        {
+          "Id": "c88690e9-add9-4d22-9078-609b32ec1379",
+          "Text": "At midnight, the lighthouse recorded a signal that no ship was authorized to send.",
+          "ThreadIds": [
+            "1d0cf22b-0a7e-4b9f-946b-0908c25ae288"
+          ]
+        }
+      ]
+    },
+    {
+      "Id": "557b18ec-a558-4c9f-b7ee-a645205fa516",
+      "BookId": "d89b9fd1-1210-42c7-b25f-5d8ba2ea88bb",
+      "Title": "Chapter 9",
+      "Paragraphs": [
+        {
+          "Id": "86a58b38-2b0d-41ad-93d2-b20a953ea8a5",
+          "Text": "The official records insisted the lighthouse had been silent throughout the night.",
+          "ThreadIds": [
+            "1d0cf22b-0a7e-4b9f-946b-0908c25ae288"
+          ]
+        }
+      ]
+    }
+  ],
+  "Threads": [
+    {
+      "Id": "1d0cf22b-0a7e-4b9f-946b-0908c25ae288",
+      "Name": "The Lighthouse Signal",
+      "Notes": "The lighthouse signal appears in both novels. Is the discrepancy intentional?"
+    }
+  ],
+  "Reviews": [],
+  "History": []
+}
