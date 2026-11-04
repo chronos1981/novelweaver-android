@@ -1,4 +1,4 @@
-# NovelWeaver for Android 2.0.6
+# NovelWeaver for Android 2.0.7
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
@@ -88,9 +88,12 @@ Male or Female, choose an installed voice and optionally set speed/pitch.
 **Preview voice** lets you audition it before saving. Android does not reliably
 supply voice gender, so labels are user-assigned. Presets persist in the project.
 
-On any paragraph, open **⋯ → Voice & speech tag**, choose **Dialogue inside
-quotes**, and select the named preset from **Saved voice preset**. It is ready
-for later paragraphs too. Editing a preset updates all paragraphs that refer
+On any paragraph, open **⋯ → Voice & speech tag**. The **Paragraph voices**
+dialog has independent **Narrator · text outside quotes** and **Dialogue · text
+inside quotes** controls. Set either or both to a named preset or installed
+voice, with separate speed and pitch. Tap **Save voices**. Blank values use
+the matching defaults. Use **Set project narrator default** in that dialog to
+change the shared narrator. Presets are available for later paragraphs too. Editing a preset updates all paragraphs that refer
 to it. Custom voice, speed and pitch values override a chosen preset; choosing
 a preset clears those custom overrides. You can also use presets for shared
 narration and dialogue defaults under Listen. A speaker name is an optional

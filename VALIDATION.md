@@ -1,5 +1,13 @@
 # Completed validation
 
+Version 2.0.7 provides independent paragraph narrator and dialogue settings.
+Tests cover legacy-tag compatibility, storing both roles, resolving each preset,
+per-role speed/pitch, mixed playback, resetting narrator to defaults and importing
+both roles. The phone-sized simulated-host check saved Torill as the narrator
+while retaining the legacy Niels dialogue preset; the resulting paragraph badge
+showed both names. The later browser reopen observation timed out. No real
+Android device audio test was performed.
+
 Version 2.0.6 adds named Male/Female/Other voice presets, preview and reuse
 in paragraph tags and role defaults. Mixed paragraph playback separates matched
 straight/curly quoted dialogue from unquoted narration. Automated checks cover

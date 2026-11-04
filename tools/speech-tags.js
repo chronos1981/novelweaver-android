@@ -8,6 +8,7 @@ function cleanSpeechSettings(raw){
 function cleanSpeechTag(raw){
  if(!raw||typeof raw!=='object')return null;
  const s=cleanSpeechSettings(raw);s.Role=raw.Role==='dialogue'?'dialogue':'narration';
+ for(const key of ['Narration','Dialogue'])if(raw[key]&&typeof raw[key]==='object')s[key]=cleanSpeechSettings(raw[key]);
  if(raw.ImportedDefaults&&typeof raw.ImportedDefaults==='object')s.ImportedDefaults=cleanSpeechDefaults(raw.ImportedDefaults);
  if(typeof raw.Speaker==='string'&&raw.Speaker.trim())s.Speaker=raw.Speaker.trim().slice(0,100);
  return s;
@@ -21,23 +22,27 @@ function speechProfileSettings(settings,profiles=S.project.SpeechProfiles){
  const s=cleanSpeechSettings(settings),profile=cleanSpeechProfiles(profiles).find(p=>p.Id===s.ProfileId);
  const result={...cleanSpeechSettings(profile),...s};delete result.ProfileId;return result;
 }
-function speechImportedTag(p,defaults,profiles){
- const tag=cleanSpeechTag(p.Speech),out=tag?{...tag,...speechProfileSettings(tag,profiles)}:null;
- if(out)delete out.ProfileId;
- // Freeze both roles on imported paragraphs so importing another book cannot change its voices.
- const imported={Narration:speechProfileSettings(tag?.ImportedDefaults?.Narration||defaults?.Narration,profiles),Dialogue:speechProfileSettings(tag?.ImportedDefaults?.Dialogue||defaults?.Dialogue,profiles)};
- if(out)imported[out.Role==='dialogue'?'Dialogue':'Narration']={...imported[out.Role==='dialogue'?'Dialogue':'Narration'],...speechProfileSettings(out,profiles)};
- if(Object.values(imported).some(v=>Object.keys(v).length))return {...(out||{Role:'narration'}),ImportedDefaults:imported};
- return out;
+function speechSettingsForRole(p,defaults,role,profiles){
+ const tag=cleanSpeechTag(p?.Speech),key=role==='dialogue'?'Dialogue':'Narration';
+ const preset=speechProfileSettings(tag?.ImportedDefaults?.[key]||defaults?.[key],profiles);
+ const legacy=tag?.Role===role?speechProfileSettings(tag,profiles):{};
+ return {...preset,...legacy,...speechProfileSettings(tag?.[key],profiles)};
 }
-function speechLabel(tag){return tag?(tag.Role==='dialogue'?'Dialogue':'Narration')+((tag.Speaker||S.project.SpeechProfiles?.find(p=>p.Id===tag.ProfileId)?.Name)?' · '+(tag.Speaker||S.project.SpeechProfiles.find(p=>p.Id===tag.ProfileId).Name):''):'Narration · defaults'}
+function speechImportedTag(p,defaults,profiles){
+ const tag=cleanSpeechTag(p.Speech),imported={Narration:speechSettingsForRole(p,defaults,'narration',profiles),Dialogue:speechSettingsForRole(p,defaults,'dialogue',profiles)};
+ if(Object.values(imported).some(v=>Object.keys(v).length))return {...(tag?.Speaker?{Speaker:tag.Speaker}:{}),Role:'narration',ImportedDefaults:imported};
+ return tag;
+}
+function speechLabel(tag){
+ if(!tag)return 'Speech · defaults';
+ const narration=tag.Narration||{},dialogue=tag.Dialogue||{},legacyName=S.project.SpeechProfiles?.find(p=>p.Id===tag.ProfileId)?.Name;
+ const n=S.project.SpeechProfiles?.find(p=>p.Id===narration.ProfileId)?.Name,d=tag.Speaker||S.project.SpeechProfiles?.find(p=>p.Id===dialogue.ProfileId)?.Name||legacyName;
+ return 'Narrator'+(n?' · '+n:'')+' / Dialogue'+(d?' · '+d:'');
+}
 function speechBadge(p){return p.Speech?`<button class="chip-button" data-action="paragraph-speech" data-id="${h(p.Id)}" aria-label="Speech settings: ${h(speechLabel(p.Speech))}">♫ ${h(speechLabel(p.Speech))}</button>`:''}
 function speechResolve(p,listen=S.listen,defaults=S.project.SpeechDefaults,role=null,profiles=S.project.SpeechProfiles){
- const tag=cleanSpeechTag(p?.Speech);role=role||tag?.Role||'narration';
- const roleKey=role==='dialogue'?'Dialogue':'Narration';
- const preset=speechProfileSettings(tag?.ImportedDefaults?.[roleKey]||defaults?.[roleKey],profiles);
- const overrides=tag?.Role===role?speechProfileSettings(tag,profiles):{};
- const s={...preset,...overrides};return {voice:s.Voice||listen.voice||'',rate:s.Rate||listen.rate||1,pitch:s.Pitch||1};
+ role=role||p?.Speech?.Role||'narration';const s=speechSettingsForRole(p,defaults,role,profiles);
+ return {voice:s.Voice||listen.voice||'',rate:s.Rate||listen.rate||1,pitch:s.Pitch||1};
 }
 function speechAvailableOptions(options){
  const voices=window.NWTTS?.voices()||[];
@@ -48,28 +53,30 @@ function speechAvailableOptions(options){
  return options;
 }
 function speechPlaybackOptions(pid,role=null){return speechAvailableOptions(speechResolve(locate(pid)?.paragraph,S.listen,S.project.SpeechDefaults,role))}
-function speechFields(s={},presets=true){
+function speechFields(s={},presets=true,prefix='speech'){
  const voices=window.NWTTS?.voices()||[],missing=s.Voice&&!voices.some(v=>v.id===s.Voice);
- return `${presets?`<label class="form-label" for="speech-profile">Saved voice preset</label><select class="text-input" id="speech-profile"><option value="">Use defaults / custom</option>${s.ProfileId&&!S.project.SpeechProfiles?.some(p=>p.Id===s.ProfileId)?`<option selected value="${h(s.ProfileId)}">Unavailable preset</option>`:''}${(S.project.SpeechProfiles||[]).map(p=>`<option value="${h(p.Id)}" ${s.ProfileId===p.Id?'selected':''}>${h(p.Gender==='male'?'Male':p.Gender==='female'?'Female':'Other')} · ${h(p.Name)}</option>`).join('')}</select><p class="tiny">Choose a saved male/female voice, or set custom overrides below.</p>`:''}<label class="form-label" for="speech-voice">Voice</label><select class="text-input" id="speech-voice"><option value="">Use defaults</option>${missing?`<option value="${h(s.Voice)}" selected>Unavailable on this device · ${h(s.Voice)}</option>`:''}${voices.map(v=>`<option value="${h(v.id)}" ${s.Voice===v.id?'selected':''}>${h(v.name)}${v.lang?' ('+h(v.lang)+')':''}</option>`).join('')}</select><div class="reader-toolbar"><label>Speed (0.5–2×)<input class="text-input" type="number" id="speech-rate" min="0.5" max="2" step="0.05" placeholder="Use defaults" value="${s.Rate||''}"></label><label>Pitch (0.5–2)<input class="text-input" type="number" id="speech-pitch" min="0.5" max="2" step="0.05" placeholder="Use defaults" value="${s.Pitch||''}"></label></div><div class="item-actions"><button class="outline-button" data-action="speech-preview">Preview voice</button>${presets?'<button class="outline-button" data-action="speech-presets">Manage saved voices</button>':''}</div>`;
+ return `${presets?`<label class="form-label" for="${prefix}-profile">Saved voice preset</label><select class="text-input" id="${prefix}-profile"><option value="">Use defaults / custom</option>${s.ProfileId&&!S.project.SpeechProfiles?.some(p=>p.Id===s.ProfileId)?`<option selected value="${h(s.ProfileId)}">Unavailable preset</option>`:''}${(S.project.SpeechProfiles||[]).map(p=>`<option value="${h(p.Id)}" ${s.ProfileId===p.Id?'selected':''}>${h(p.Gender==='male'?'Male':p.Gender==='female'?'Female':'Other')} · ${h(p.Name)}</option>`).join('')}</select><p class="tiny">Choose a saved male/female voice, or set custom overrides below.</p>`:''}<label class="form-label" for="${prefix}-voice">Voice</label><select class="text-input" id="${prefix}-voice"><option value="">Use defaults</option>${missing?`<option value="${h(s.Voice)}" selected>Unavailable on this device · ${h(s.Voice)}</option>`:''}${voices.map(v=>`<option value="${h(v.id)}" ${s.Voice===v.id?'selected':''}>${h(v.name)}${v.lang?' ('+h(v.lang)+')':''}</option>`).join('')}</select><div class="reader-toolbar"><label>Speed (0.5–2×)<input class="text-input" type="number" id="${prefix}-rate" min="0.5" max="2" step="0.05" placeholder="Use defaults" value="${s.Rate||''}"></label><label>Pitch (0.5–2)<input class="text-input" type="number" id="${prefix}-pitch" min="0.5" max="2" step="0.05" placeholder="Use defaults" value="${s.Pitch||''}"></label></div><div class="item-actions"><button class="outline-button" data-action="speech-preview" data-id="${prefix}">Preview voice</button>${presets?'<button class="outline-button" data-action="speech-presets">Manage saved voices</button>':''}</div>`;
 }
-function speechReadFields(){
- const s={},voice=$('#speech-voice').value,profile=$('#speech-profile')?.value;if(profile)s.ProfileId=profile;if(voice)s.Voice=voice;
- for(const key of ['Rate','Pitch']){const input=$('#speech-'+key.toLowerCase()),value=input.value.trim();if(value){const n=Number(value);if(!Number.isFinite(n)||n<.5||n>2)throw Error(key+' must be between 0.5 and 2.');s[key]=n;}}
+function speechReadFields(prefix='speech'){
+ const s={},voice=$('#'+prefix+'-voice').value,profile=$('#'+prefix+'-profile')?.value;if(profile)s.ProfileId=profile;if(voice)s.Voice=voice;
+ for(const key of ['Rate','Pitch']){const input=$('#'+prefix+'-'+key.toLowerCase()),value=input.value.trim();if(value){const n=Number(value);if(!Number.isFinite(n)||n<.5||n>2)throw Error(key+' must be between 0.5 and 2.');s[key]=n;}}
  return s;
 }
 function paragraphSpeech(pid,error='',draft=null){
  const f=locate(pid);if(!f)return;flushAllEdits();listenStop();const s=draft||cleanSpeechTag(f.paragraph.Speech)||{};
- modal('Paragraph speech tag',`<p class="item-sub">${h(short(f.paragraph.Text||'(empty paragraph)',140))}</p>${error?`<p role="alert">${h(error)}</p>`:''}<label class="form-label" for="speech-role">Apply these settings to</label><select class="text-input" id="speech-role"><option value="narration" ${s.Role!=='dialogue'?'selected':''}>Narration outside quotes</option><option value="dialogue" ${s.Role==='dialogue'?'selected':''}>Dialogue inside quotes</option></select><label class="form-label" for="speech-speaker">Speaker (optional label)</label><input class="text-input" id="speech-speaker" maxlength="100" placeholder="e.g. Niels" value="${h(s.Speaker||'')}">${speechFields(s)}<p class="tiny">Blank settings inherit the narration or dialogue defaults in Listen. Only quoted text uses dialogue settings. Text outside quotes uses narration settings, even in the same paragraph. Use matched straight or curly quotation marks. Tags are saved in your project; they are not spoken or printed.</p>`,[{text:'Cancel',value:'cancel'},{text:'Remove tag',value:'remove'},{text:'Save tag',value:'save',primary:true}],v=>{
+ const narration={...(s.Role==='narration'?cleanSpeechSettings(s):{}),...cleanSpeechSettings(s.Narration)},dialogue={...(s.Role==='dialogue'?cleanSpeechSettings(s):{}),...cleanSpeechSettings(s.Dialogue)};
+ const defaultNarrator=speechResolve({},S.listen,S.project.SpeechDefaults,'narration'),defaultName=window.NWTTS?.voices().find(v=>v.id===defaultNarrator.voice)?.name||'Device default';
+ modal('Paragraph voices',`<p class="item-sub">${h(short(f.paragraph.Text||'(empty paragraph)',140))}</p>${error?`<p role="alert">${h(error)}</p>`:''}<fieldset><legend>Narrator · text outside quotes</legend><p class="tiny">Use defaults currently means: ${h(defaultName)}.</p>${speechFields(narration,true,'speech-narration')}</fieldset><fieldset><legend>Dialogue · text inside quotes</legend><label class="form-label" for="speech-speaker">Speaker (optional label)</label><input class="text-input" id="speech-speaker" maxlength="100" placeholder="e.g. Niels" value="${h(s.Speaker||'')}">${speechFields(dialogue,true,'speech-dialogue')}</fieldset><p class="tiny">Choose both voices independently for this paragraph. Blank values use the project’s narrator or dialogue defaults. Quotes switch between these voices without changing your writing.</p><button class="outline-button" data-action="speech-defaults-narration">Set project narrator default</button>`,[{text:'Cancel',value:'cancel'},{text:'Remove tag',value:'remove'},{text:'Save voices',value:'save',primary:true}],v=>{
   window.NWTTS?.stop();if(v==='cancel')return;
   if(v==='remove'){delete f.paragraph.Speech;changed();render();return}
-  const draft={Role:$('#speech-role').value,Speaker:$('#speech-speaker').value};
-  try{f.paragraph.Speech=cleanSpeechTag({...speechReadFields(),...draft,...(s.ImportedDefaults?{ImportedDefaults:s.ImportedDefaults}:{})});changed();render();toast('Speech tag saved')}catch(e){paragraphSpeech(pid,e.message,{...s,...draft})}
+  const draft={Speaker:$('#speech-speaker').value,...(s.ImportedDefaults?{ImportedDefaults:s.ImportedDefaults}:{})};
+  try{draft.Narration=speechReadFields('speech-narration');draft.Dialogue=speechReadFields('speech-dialogue');f.paragraph.Speech=cleanSpeechTag(draft);changed();render();toast('Paragraph voices saved')}catch(e){paragraphSpeech(pid,e.message,{...s,...draft})}
  });
 }
 function speechDefaultMenu(){modal('Narration & dialogue voices','<p>Project defaults apply to paragraphs by role. Text outside quotes uses narration; quoted text uses dialogue. Blank values fall back to the Listen voice and speed; pitch falls back to 1.</p><div class="detail-grid"><button class="outline-button" data-action="speech-presets">Saved male/female voices</button><button class="outline-button" data-action="speech-defaults-narration">Narration defaults</button><button class="outline-button" data-action="speech-defaults-dialogue">Dialogue defaults</button></div>',[{text:'Close',value:'cancel'}])}
 function speechDefaultEdit(role,error=''){
  const key=role==='dialogue'?'Dialogue':'Narration',s=cleanSpeechDefaults(S.project.SpeechDefaults)[key];listenStop();
- modal(key+' defaults',`${error?`<p role="alert">${h(error)}</p>`:''}${speechFields(s)}<p class="tiny">Saved with this project. Installed voice names can differ between devices. Unavailable voices fall back to the Listen voice or device default.</p>`,[{text:'Cancel',value:'cancel'},{text:'Reset',value:'reset'},{text:'Save defaults',value:'save',primary:true}],v=>{window.NWTTS?.stop();if(v==='cancel')return;try{const settings=v==='reset'?{}:speechReadFields();S.project.SpeechDefaults=cleanSpeechDefaults(S.project.SpeechDefaults);S.project.SpeechDefaults[key]=settings;changed();render();toast(key+' defaults saved')}catch(e){speechDefaultEdit(role,e.message)}});
+ modal(key+' defaults',`${error?`<p role="alert">${h(error)}</p>`:''}${speechFields(s,true,'speech-'+role)}<p class="tiny">Saved with this project. Installed voice names can differ between devices. Unavailable voices fall back to the Listen voice or device default.</p>`,[{text:'Cancel',value:'cancel'},{text:'Reset',value:'reset'},{text:'Save defaults',value:'save',primary:true}],v=>{window.NWTTS?.stop();if(v==='cancel')return;try{const settings=v==='reset'?{}:speechReadFields('speech-'+role);S.project.SpeechDefaults=cleanSpeechDefaults(S.project.SpeechDefaults);S.project.SpeechDefaults[key]=settings;changed();render();toast(key+' defaults saved')}catch(e){speechDefaultEdit(role,e.message)}});
 }
 
 function speechPresetMenu(){
@@ -83,7 +90,7 @@ function speechPresetEdit(pid=null,error=''){
   try{const settings=speechReadFields(),name=$('#speech-preset-name').value.trim();if(!name)throw Error('Enter a preset name.');if(!settings.Voice)throw Error('Choose an installed voice to save.');const value={Id:pid||id(),Name:name,Gender:$('#speech-gender').value,...settings};S.project.SpeechProfiles=cleanSpeechProfiles(S.project.SpeechProfiles);const ix=S.project.SpeechProfiles.findIndex(p=>p.Id===value.Id);if(ix>=0)S.project.SpeechProfiles[ix]=value;else S.project.SpeechProfiles.push(value);changed();render();speechPresetMenu()}catch(e){speechPresetEdit(pid,e.message)}
  });
 }
-function speechPreview(){
- try{if(!window.NWTTS?.available())throw Error('No speech engine is available.');const role=$('#speech-role')?.value||'narration';const tag={Role:role,...speechReadFields()};const options=speechAvailableOptions(speechResolve({Speech:tag},S.listen,S.project.SpeechDefaults,role));window.NWTTS.speak('This is a preview of the selected voice.',{...options,onError:message=>toast('Speech: '+message)})}catch(e){toast(e.message)}
+function speechPreview(prefix='speech'){
+ try{if(!window.NWTTS?.available())throw Error('No speech engine is available.');const role=prefix==='speech-dialogue'?'dialogue':'narration';const tag={Role:role,...speechReadFields(prefix)};const options=speechAvailableOptions(speechResolve({Speech:tag},S.listen,S.project.SpeechDefaults,role));window.NWTTS.speak('This is a preview of the selected voice.',{...options,onError:message=>toast('Speech: '+message)})}catch(e){toast(e.message)}
 }
-document.addEventListener('change',event=>{if(event.target.id==='speech-profile'){for(const key of ['voice','rate','pitch'])$('#speech-'+key).value='';}});
+document.addEventListener('change',event=>{if(event.target.id.endsWith('-profile')){const prefix=event.target.id.slice(0,-8);if(['speech','speech-narration','speech-dialogue'].includes(prefix))for(const key of ['voice','rate','pitch'])$('#'+prefix+'-'+key).value='';}});
