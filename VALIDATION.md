@@ -1,5 +1,13 @@
 # Completed validation
 
+Version 2.0.9 adds a saved dialogue preset combo box and Apply button to every
+paragraph card. Tests cover custom/legacy metadata, narrator preservation,
+missing/empty presets, defaults, no-op applications, unchanged text/history and
+scroll/focus retention. A phone-sized simulated host selected Livit, applied it
+and verified the speech badge and selected preset, with zero text edits. DOM
+bounds confirmed the picker remains inside the card at the lower right. This
+was a browser check; no physical Android device was used.
+
 Version 2.0.8 adds shared device-local language and connection voice filters.
 JavaScript checks cover canonical locales, local/online/unknown metadata,
 empty matches, selected and missing voice retention, late voice discovery and

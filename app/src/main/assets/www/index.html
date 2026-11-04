@@ -435,7 +435,7 @@ html.ebook-fallback-active,html.ebook-fallback-active body{overflow:hidden!impor
 <title>NovelWeaver — Offline Writing Studio</title>
 <!-- Site configuration lives in a separate file so app updates do not erase it. -->
 <script src="./desktop-host.js"></script>
-<style>.save-status{max-width:28vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}</style><style>.chapter-navigation{display:flex;gap:8px;flex-basis:100%;width:100%}.chapter-navigation button{flex:1;min-width:0}.chapter-navigation button:disabled{opacity:.45;cursor:default}</style><style>.chapter-navigation-footer{margin:18px 0 56px}</style></head>
+<style>.save-status{max-width:28vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}</style><style>.chapter-navigation{display:flex;gap:8px;flex-basis:100%;width:100%}.chapter-navigation button{flex:1;min-width:0}.chapter-navigation button:disabled{opacity:.45;cursor:default}</style><style>.chapter-navigation-footer{margin:18px 0 56px}</style><style>.paragraph-quick-voice{margin-left:auto;display:flex;gap:8px;align-items:flex-end;justify-content:flex-end;flex-wrap:wrap;max-width:100%}.paragraph-quick-voice label{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 140px;max-width:220px}.paragraph-quick-voice label span{font:12px var(--font-ui,sans-serif);color:var(--muted,#657a82)}.paragraph-quick-voice select{max-width:100%;width:100%;min-height:40px;border:1px solid #b8c8c8;border-radius:8px;padding:7px 8px;background:var(--paper,#fff);color:inherit;font:inherit}.paragraph-quick-voice button{min-height:40px;white-space:nowrap}.paragraph-quick-voice select:disabled,.paragraph-quick-voice button:disabled{opacity:.5}.para-meta>.chip-button{max-width:100%;white-space:normal;text-align:left}</style></head>
 <body>
 <div class="app" id="app">
 <header class="topbar">
@@ -620,7 +620,7 @@ function speechLabel(tag){
  const n=S.project.SpeechProfiles?.find(p=>p.Id===narration.ProfileId)?.Name,d=tag.Speaker||S.project.SpeechProfiles?.find(p=>p.Id===dialogue.ProfileId)?.Name||legacyName;
  return 'Narrator'+(n?' · '+n:'')+' / Dialogue'+(d?' · '+d:'');
 }
-function speechBadge(p){return p.Speech?`<button class="chip-button" data-action="paragraph-speech" data-id="${h(p.Id)}" aria-label="Speech settings: ${h(speechLabel(p.Speech))}">♫ ${h(speechLabel(p.Speech))}</button>`:''}
+function speechBadge(p){return (p.Speech?`<button class="chip-button" data-action="paragraph-speech" data-id="${h(p.Id)}" aria-label="Speech settings: ${h(speechLabel(p.Speech))}">♫ ${h(speechLabel(p.Speech))}</button>`:'')+speechQuickPicker(p)}
 function speechResolve(p,listen=S.listen,defaults=S.project.SpeechDefaults,role=null,profiles=S.project.SpeechProfiles){
  role=role||p?.Speech?.Role||'narration';const s=speechSettingsForRole(p,defaults,role,profiles);
  return {voice:s.Voice||listen.voice||'',rate:s.Rate||listen.rate||1,pitch:s.Pitch||1};
@@ -674,6 +674,36 @@ function speechPreview(prefix='speech'){
  try{if(!window.NWTTS?.available())throw Error('No speech engine is available.');const role=prefix==='speech-dialogue'?'dialogue':'narration';const tag={Role:role,...speechReadFields(prefix)};const options=speechAvailableOptions(speechResolve({Speech:tag},S.listen,S.project.SpeechDefaults,role));window.NWTTS.speak('This is a preview of the selected voice.',{...options,onError:message=>toast('Speech: '+message)})}catch(e){toast(e.message)}
 }
 document.addEventListener('change',event=>{if(event.target.id.endsWith('-profile')){const prefix=event.target.id.slice(0,-8);if(['speech','speech-narration','speech-dialogue'].includes(prefix))for(const key of ['voice','rate','pitch'])$('#'+prefix+'-'+key).value='';}});
+
+function speechQuickPicker(p){
+ const profiles=cleanSpeechProfiles(S.project.SpeechProfiles),tag=cleanSpeechTag(p.Speech);
+ const settings={...(tag?.Role==='dialogue'?cleanSpeechSettings(tag):{}),...cleanSpeechSettings(tag?.Dialogue)};
+ const custom=Object.keys(settings).some(key=>key!=='ProfileId'),selected=custom?'__keep__':settings.ProfileId||'';
+ const options=`<option value="" ${!selected?'selected':''}>Use dialogue defaults</option>`+
+  (custom?'<option value="__keep__" selected>Keep custom voice settings</option>':'')+
+  (selected&&selected!=='__keep__'&&!profiles.some(v=>v.Id===selected)?`<option value="${h(selected)}" selected>Unavailable saved voice</option>`:'')+
+  profiles.map(v=>`<option value="${h(v.Id)}" ${v.Id===selected?'selected':''}>${h(v.Name)} · ${v.Gender==='male'?'Male':v.Gender==='female'?'Female':'Other'}</option>`).join('');
+ return `<div class="paragraph-quick-voice" role="group" aria-label="Quick dialogue voice"><label><span>Dialogue voice</span><select data-quick-voice="${h(p.Id)}" aria-label="Saved dialogue voice" ${!profiles.length?'disabled':''}>${options}</select></label><button class="outline-button" data-action="speech-quick-apply" data-id="${h(p.Id)}" aria-label="Apply saved dialogue voice" ${!profiles.length?'disabled':''}>Apply</button>${!profiles.length?'<button class="mini-link" data-action="speech-presets">Save a voice…</button>':''}</div>`;
+}
+function speechQuickTag(previous,profileId,profiles){
+ const tag=cleanSpeechTag(previous)||{},profile=profiles.find(p=>p.Id===profileId);
+ if(profileId&&!profile)throw Error('That saved voice is unavailable. Choose another preset.');
+ const narration={...(tag.Role==='narration'?cleanSpeechSettings(tag):{}),...cleanSpeechSettings(tag.Narration)};
+ return cleanSpeechTag({Narration:narration,Dialogue:profile?{ProfileId:profile.Id}:{},...(profile?{Speaker:profile.Name}:{}),...(tag.ImportedDefaults?{ImportedDefaults:tag.ImportedDefaults}:{})});
+}
+function speechQuickApply(pid){
+ flushAllEdits();const f=locate(pid),select=$$('[data-quick-voice]').find(el=>el.dataset.quickVoice===pid);if(!f||!select)return;
+ if(select.value==='__keep__'){toast('Custom voice settings kept');return}
+ try{
+  const next=speechQuickTag(f.paragraph.Speech,select.value,cleanSpeechProfiles(S.project.SpeechProfiles));
+  if(JSON.stringify(cleanSpeechTag(f.paragraph.Speech))===JSON.stringify(next)){toast('Voice already applied');return}
+  listenStop();f.paragraph.Speech=next;changed();
+  const main=document.getElementById('main'),top=main?.scrollTop||0,y=window.scrollY||0;
+  render();if(main)main.scrollTop=top;window.scrollTo(0,y);
+  $$('[data-action="speech-quick-apply"]').find(el=>el.dataset.id===pid)?.focus({preventScroll:true});
+  toast(select.value?'Dialogue voice applied':'Dialogue defaults applied');
+ }catch(e){toast(e.message)}
+}
 
 function cleanProject(raw){if(!raw||typeof raw!=='object'||!Array.isArray(raw.Books)||!Array.isArray(raw.Chapters)||!Array.isArray(raw.Threads))throw Error('Not a NovelWeaver project (.novel.json).');
  const p={Id:String(raw.Id||id()),Title:String(raw.Title||'Untitled Series'),ModifiedAtUtc:typeof raw.ModifiedAtUtc==='string'&&Number.isFinite(Date.parse(raw.ModifiedAtUtc))?raw.ModifiedAtUtc:null,Books:[],Chapters:[],Threads:[],Reviews:[],History:[],SpeechDefaults:cleanSpeechDefaults(raw.SpeechDefaults),SpeechProfiles:cleanSpeechProfiles(raw.SpeechProfiles)};
@@ -1118,7 +1148,7 @@ document.addEventListener('input',e=>{if(e.target.id==='cover-author'){const b=b
 document.addEventListener('change',async e=>{const input=e.target;if(input.id==='cover-book'){listenStop();S.bookId=input.value;S.chapterId=S.project.Chapters.find(c=>c.BookId===S.bookId)?.Id||null;S.readChapterId=null;S.reader.page=0;render();bookCovers();return}if(input.id==='cover-author'){const b=bookById(input.dataset.book);if(b){b.Author=input.value.trim().slice(0,200);changed()}return}if(!input.dataset.coverSide)return;const side=input.dataset.coverSide,bookId=input.dataset.book,file=input.files?.[0],projectId=S.project.Id;if(!file||!['FrontCover','BackCover'].includes(side))return;input.disabled=true;try{const cover=await coverFromFile(file),b=bookById(bookId);if(S.project.Id!==projectId||!b)return;b[side]=cover;changed();await saveLocal();if(activeBook()?.Id===bookId)bookCovers();toast(S.dirty?'Cover added. Export a project backup; local save failed.':'Cover image saved')}catch(err){toast(err.message)}finally{input.disabled=false;input.value=''}});
 function coverAsset(cover){const c=cleanCover(cover);if(!c)return null;const [head,data]=c.DataUrl.split(',');return {...c,bytes:Uint8Array.from(atob(data),s=>s.charCodeAt(0)),mime:head.includes('image/png')?'image/png':'image/jpeg',ext:head.includes('image/png')?'png':'jpg'}}
 function epubPage(title,body){return `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="en" lang="en"><head>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'"><title>${xmlEscape(title)}</title><link rel="stylesheet" type="text/css" href="style.css"/><style>.save-status{max-width:28vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}</style><style>.chapter-navigation{display:flex;gap:8px;flex-basis:100%;width:100%}.chapter-navigation button{flex:1;min-width:0}.chapter-navigation button:disabled{opacity:.45;cursor:default}</style><style>.chapter-navigation-footer{margin:18px 0 56px}</style></head><body>${body}<\/body><\/html>`}
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'"><title>${xmlEscape(title)}</title><link rel="stylesheet" type="text/css" href="style.css"/><style>.save-status{max-width:28vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}</style><style>.chapter-navigation{display:flex;gap:8px;flex-basis:100%;width:100%}.chapter-navigation button{flex:1;min-width:0}.chapter-navigation button:disabled{opacity:.45;cursor:default}</style><style>.chapter-navigation-footer{margin:18px 0 56px}</style><style>.paragraph-quick-voice{margin-left:auto;display:flex;gap:8px;align-items:flex-end;justify-content:flex-end;flex-wrap:wrap;max-width:100%}.paragraph-quick-voice label{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 140px;max-width:220px}.paragraph-quick-voice label span{font:12px var(--font-ui,sans-serif);color:var(--muted,#657a82)}.paragraph-quick-voice select{max-width:100%;width:100%;min-height:40px;border:1px solid #b8c8c8;border-radius:8px;padding:7px 8px;background:var(--paper,#fff);color:inherit;font:inherit}.paragraph-quick-voice button{min-height:40px;white-space:nowrap}.paragraph-quick-voice select:disabled,.paragraph-quick-voice button:disabled{opacity:.5}.para-meta>.chip-button{max-width:100%;white-space:normal;text-align:left}</style></head><body>${body}<\/body><\/html>`}
 function buildBookEpub(book,chapters){const entries=[['mimetype','application/epub+zip'],['META-INF/container.xml','<?xml version="1.0" encoding="UTF-8"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="EPUB/package.opf" media-type="application/oebps-package+xml"/></rootfiles></container>']],manifest=[],spine=[],toc=[];const add=(id,path,content,mime,properties='')=>{entries.push(['EPUB/'+path,content]);manifest.push(`<item id="${id}" href="${path}" media-type="${mime}"${properties?` properties="${properties}"`:''}/>`)};const coverPage=(side,label,id)=>{const asset=coverAsset(book[side]);if(!asset)return;const imagePath=id+'.'+asset.ext;add(id+'-image',imagePath,asset.bytes,asset.mime,side==='FrontCover'?'cover-image':'');add(id,id+'.xhtml',epubPage(label,`<section class="cover"${side==='FrontCover'?' epub:type="cover"':''}><img src="${imagePath}" alt="${xmlEscape(label+' of '+book.Title)}"/></section>`),'application/xhtml+xml');spine.push(id);toc.push([id+'.xhtml',label])};
  coverPage('FrontCover','Front cover','front-cover');add('title','title.xhtml',epubPage(book.Title,`<section epub:type="titlepage"><h1>${xmlEscape(book.Title)}</h1>${book.Author?`<p class="author">${xmlEscape(book.Author)}</p>`:''}</section>`),'application/xhtml+xml');spine.push('title');toc.push(['title.xhtml',book.Title]);
  chapters.forEach((chapter,i)=>{const id='chapter-'+(i+1),path=id+'.xhtml';add(id,path,epubPage(chapter.Title,`<section epub:type="chapter"><h1>${xmlEscape(chapter.Title)}</h1>${chapter.Paragraphs.map(p=>`<p>${xmlEscape(p.Text).replace(/\r\n?/g,'\n').replace(/\n/g,'<br/>')||'&#160;'}</p>`).join('')}</section>`),'application/xhtml+xml');spine.push(id);toc.push([path,chapter.Title])});coverPage('BackCover','Back cover','back-cover');
@@ -1261,6 +1291,7 @@ document.addEventListener('click',async e=>{const mr=e.target.closest('[data-mod
  case 'go-write':S.view='write';S.chapterId=chapterById(S.readChapterId)?.Id||S.project.Chapters.find(c=>c.BookId===S.bookId)?.Id||null;render();break;
  case 'add-paragraph':addParagraph();break;case 'insert-after':closeModal();addParagraph(x);break;
  case 'paragraph-speech':paragraphSpeech(x);break;
+ case 'speech-quick-apply':speechQuickApply(x);break;
  case 'speech-defaults':speechDefaultMenu();break;
  case 'speech-presets':speechPresetMenu();break;
  case 'speech-preset-new':speechPresetEdit();break;

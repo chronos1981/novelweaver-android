@@ -39,7 +39,7 @@ function speechLabel(tag){
  const n=S.project.SpeechProfiles?.find(p=>p.Id===narration.ProfileId)?.Name,d=tag.Speaker||S.project.SpeechProfiles?.find(p=>p.Id===dialogue.ProfileId)?.Name||legacyName;
  return 'Narrator'+(n?' · '+n:'')+' / Dialogue'+(d?' · '+d:'');
 }
-function speechBadge(p){return p.Speech?`<button class="chip-button" data-action="paragraph-speech" data-id="${h(p.Id)}" aria-label="Speech settings: ${h(speechLabel(p.Speech))}">♫ ${h(speechLabel(p.Speech))}</button>`:''}
+function speechBadge(p){return (p.Speech?`<button class="chip-button" data-action="paragraph-speech" data-id="${h(p.Id)}" aria-label="Speech settings: ${h(speechLabel(p.Speech))}">♫ ${h(speechLabel(p.Speech))}</button>`:'')+speechQuickPicker(p)}
 function speechResolve(p,listen=S.listen,defaults=S.project.SpeechDefaults,role=null,profiles=S.project.SpeechProfiles){
  role=role||p?.Speech?.Role||'narration';const s=speechSettingsForRole(p,defaults,role,profiles);
  return {voice:s.Voice||listen.voice||'',rate:s.Rate||listen.rate||1,pitch:s.Pitch||1};

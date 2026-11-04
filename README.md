@@ -1,4 +1,4 @@
-# NovelWeaver for Android 2.0.8
+# NovelWeaver for Android 2.0.9
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
@@ -90,6 +90,17 @@ between selectors. They do not change saved voice settings or playback. An
 existing selection outside the filters remains visible with a note. Missing
 voices and empty result lists are labelled explicitly. Connection type comes
 from the speech engine’s metadata; unknown metadata is never guessed.
+
+## Quick paragraph voice picker
+
+Each paragraph card has a **Dialogue voice** combo box and **Apply** button at
+its lower right. Choose a saved preset and Apply to change only that paragraph's
+quoted dialogue. Its narrator, manuscript and text edit history are preserved.
+**Use dialogue defaults** removes the dialogue override. Existing custom settings
+stay selected until you choose a preset; an unavailable preset is never silently
+replaced. If no presets exist, **Save a voice…** opens the voice manager.
+The full paragraph voice dialog remains available through its speech badge or
+**⋯ → Voice & speech tag**. The quick picker preserves reading/scroll position.
 
 ## Saved voices and dialogue playback
 
@@ -209,6 +220,7 @@ must be reviewed when upstream changes. Android-only secrets and file operations
 remain in the native Java host. For shared JavaScript checks, with Node installed:
 
 ```sh
+node tests/quick-voices.test.cjs
 node tests/voice-filters.test.cjs
 node tests/speech-tags.test.cjs
 node tests/startup.test.cjs

@@ -1,0 +1,16 @@
+const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path'),assert=require('node:assert/strict');
+const root=path.join(__dirname,'..'),profiles=[{Id:'niels',Name:'Niels',Gender:'male',Voice:'voice-a'},{Id:'livit',Name:'Livit',Gender:'male',Voice:'voice-b'}];
+const paragraph={Id:'p',Text:'Narration. “Dialogue.”',ThreadIds:['thread'],Speech:{Narration:{Voice:'narrator',Rate:.9},Dialogue:{Voice:'old',Rate:1.4},Speaker:'Old'}};
+let saves=0,renders=0,stops=0,focuses=0;const select={dataset:{quickVoice:'p'},value:'livit'},main={scrollTop:450},button={dataset:{id:'p'},focus(){focuses++}},project={SpeechProfiles:profiles,History:[],Chapters:[{Paragraphs:[paragraph]}]};
+const c=vm.createContext({document:{addEventListener(){},getElementById:()=>main},S:{project},window:{scrollY:700,scrollTo(x,y){assert.equal(y,700)}},h:s=>String(s).replace(/"/g,'&quot;'),flushAllEdits(){},locate:()=>({paragraph}),$$:selector=>selector==='[data-quick-voice]'?[select]:[button],listenStop(){stops++},changed(){saves++},render(){renders++;main.scrollTop=0},toast(){}});
+vm.runInContext(fs.readFileSync(path.join(root,'tools/speech-tags.js'),'utf8')+fs.readFileSync(path.join(root,'tools/quick-voices.js'),'utf8')+'globalThis.api={speechQuickPicker,speechQuickTag,speechQuickApply};',c);
+let html=c.api.speechQuickPicker(paragraph);assert.match(html,/Keep custom voice settings/);assert.match(html,/Livit/);assert.match(html,/data-quick-voice="p"/);
+c.api.speechQuickApply('p');assert.equal(paragraph.Speech.Dialogue.ProfileId,'livit');assert.equal(paragraph.Speech.Dialogue.Voice,undefined);assert.equal(paragraph.Speech.Narration.Voice,'narrator');assert.equal(paragraph.Speech.Narration.Rate,.9);assert.equal(paragraph.Speech.Speaker,'Livit');assert.equal(paragraph.Text,'Narration. “Dialogue.”');assert.equal(project.History.length,0);assert.equal(saves,1);assert.equal(renders,1);assert.equal(stops,1);assert.equal(main.scrollTop,450);assert.equal(focuses,1);
+c.api.speechQuickApply('p');assert.equal(saves,1,'Already-applied settings do not save again');
+select.value='__keep__';c.api.speechQuickApply('p');assert.equal(saves,1);select.value='missing';c.api.speechQuickApply('p');assert.equal(saves,1);
+select.value='';c.api.speechQuickApply('p');assert.equal(paragraph.Speech.Dialogue.ProfileId,undefined);assert.equal(paragraph.Speech.Narration.Voice,'narrator');
+let tag=c.api.speechQuickTag({Role:'narration',Voice:'legacy-narrator',Pitch:.8},'niels',profiles);assert.equal(tag.Narration.Voice,'legacy-narrator');assert.equal(tag.Narration.Pitch,.8);
+tag=c.api.speechQuickTag({Role:'dialogue',Voice:'legacy-dialogue',Rate:1.8},'niels',profiles);assert.equal(tag.Narration.Voice,undefined);assert.equal(tag.Dialogue.Voice,undefined);
+project.SpeechProfiles=[];assert.match(c.api.speechQuickPicker(paragraph),/disabled/);assert.match(c.api.speechQuickPicker(paragraph),/Save a voice/);
+const bundled=fs.readFileSync(path.join(root,'app/src/main/assets/www/index.html'),'utf8');assert.match(bundled,/speech-quick-apply/);assert.match(bundled,/innerHTML=speechBadge\(f.paragraph\)/);
+console.log('PASS: quick preset picker, custom/legacy settings, missing preset guard, narrator preservation, reset, no-op save, no history edits and scroll/focus retention.');
