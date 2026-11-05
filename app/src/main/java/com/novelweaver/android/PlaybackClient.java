@@ -1,5 +1,6 @@
 package com.novelweaver.android;
 
+import android.app.Activity;
 import android.content.*;
 import android.os.IBinder;
 import org.json.*;
@@ -16,10 +17,12 @@ final class PlaybackClient {
     private boolean closed,bound;
     private final ServiceConnection connection=new ServiceConnection(){
         @Override public void onServiceConnected(ComponentName name,IBinder binder){
-            if(closed)return;service=((ChapterPlaybackService.LocalBinder)binder).service();service.addListener(listener);
+            if(closed)return;service=((ChapterPlaybackService.LocalBinder)binder).service();
+            if(context instanceof Activity)((Activity)context).setMediaController(service.mediaController());
+            service.addListener(listener);
             List<Runnable> work=new ArrayList<>(pending);pending.clear();for(Runnable task:work)task.run();
         }
-        @Override public void onServiceDisconnected(ComponentName name){service=null;}
+        @Override public void onServiceDisconnected(ComponentName name){if(context instanceof Activity)((Activity)context).setMediaController(null);service=null;}
     };
     PlaybackClient(Context context,ChapterPlaybackService.Listener listener){this.context=context;this.listener=listener;bound=context.bindService(new Intent(context,ChapterPlaybackService.class).setAction(ChapterPlaybackService.LOCAL),connection,Context.BIND_AUTO_CREATE);}
     JSONArray voices(){return service==null?new JSONArray():service.voices();}
@@ -30,5 +33,5 @@ final class PlaybackClient {
     }
     void project(JSONObject value,String uri){run(s->s.setProject(value,uri),e->{});}
     void command(String action,JSONObject payload,Runnable done,Consumer<Exception> error){run(s->{s.command(action,payload);done.run();},error);}
-    void destroy(){closed=true;pending.clear();if(service!=null)service.removeListener(listener);if(bound)context.unbindService(connection);service=null;}
+    void destroy(){closed=true;pending.clear();if(context instanceof Activity)((Activity)context).setMediaController(null);if(service!=null)service.removeListener(listener);if(bound)context.unbindService(connection);service=null;}
 }
