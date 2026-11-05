@@ -1,4 +1,4 @@
-# NovelWeaver for Android 2.0.9
+# NovelWeaver for Android 2.0.10
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
@@ -93,11 +93,11 @@ from the speech engine’s metadata; unknown metadata is never guessed.
 
 ## Quick paragraph voice picker
 
-Each paragraph card has a **Dialogue voice** combo box and **Apply** button at
-its lower right. Choose a saved preset and Apply to change only that paragraph's
-quoted dialogue. Its narrator, manuscript and text edit history are preserved.
+Each paragraph card has a **Dialogue voice** combo box at its lower right.
+Choosing a saved preset immediately updates and saves that paragraph’s quoted
+dialogue voice; no Apply button is needed. Its narrator, manuscript and text edit history are preserved.
 **Use dialogue defaults** removes the dialogue override. Existing custom settings
-stay selected until you choose a preset; an unavailable preset is never silently
+stay selected until you choose another option; an unavailable preset is never silently
 replaced. If no presets exist, **Save a voice…** opens the voice manager.
 The full paragraph voice dialog remains available through its speech badge or
 **⋯ → Voice & speech tag**. The quick picker preserves reading/scroll position.

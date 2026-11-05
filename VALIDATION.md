@@ -1,5 +1,12 @@
 # Completed validation
 
+Version 2.0.10 removes the quick-picker Apply button. Its change event immediately
+updates and autosaves the dialogue preset while retaining narrator, text, history,
+scroll and focus. Automated tests exercise the actual change listener and verify
+that the Apply action is absent from the generated editor. A phone-sized simulated
+host confirmed that selecting Livit updates the speech badge and starts saving
+without a click, while keeping focus on the dropdown.
+
 Version 2.0.9 adds a saved dialogue preset combo box and Apply button to every
 paragraph card. Tests cover custom/legacy metadata, narrator preservation,
 missing/empty presets, defaults, no-op applications, unchanged text/history and
