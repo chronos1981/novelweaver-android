@@ -133,7 +133,7 @@ async function desktopCommand(command) {
 window.NWDesktop = {command:desktopCommand};
 window.addEventListener('nw-file-status',event=>desktopHandleResult(event.detail));
 window.NWAndroid={
-  pause(){if(desktop.starting)return;if(S.listen.playing)listenPause();flushAllEdits();saveLocal()},
+  pause(){if(desktop.starting)return;flushAllEdits();saveLocal()},
   back(){if($('#modal-host .modal')){const fn=modalResolve;closeModal();fn?.('cancel')}else if(quill.open)quillClose();else if(S.sidebarOpen)closeSidebar();else desktopCommand('close')}
 };
 document.addEventListener('keydown', event => {

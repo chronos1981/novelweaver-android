@@ -1,5 +1,26 @@
 # Completed validation
 
+Version 2.1.0 adds a native MediaBrowserService and MediaSession for Android Auto,
+notification/lock-screen playback controls, background narration, audio focus and
+headphone-disconnect handling. The editor connects as a client; its lifecycle no
+longer pauses or destroys chapter narration. The service reads the last actual
+project file on cold start and reports unavailable files without recovery fallback.
+
+New native speech-planning tests cover narrator/dialogue and preset inheritance,
+imported defaults, quoted text and apostrophes, pronunciation rules, safe long-text
+chunking, paragraph bookmarks, empty/missing chapters, chapter boundaries and
+same-book isolation. Service tests exercise native queue progression without an
+Activity, pause/resume and stale callbacks, chapter controls, audio interruptions,
+listener disconnect, metadata, caller validation and cold-file reads. A bridge test
+covers full native playback requests, settings, bookmarks and UI state events.
+
+Automated validation: 10 JavaScript suites and 40 native tests (including 14
+Robolectric service cases across Android 9 and Android 15) pass.
+
+Physical Android Auto head-unit, Bluetooth steering-wheel and real installed TTS
+engine testing still require a phone/car. This is a personal development APK, not
+a Google Play-certified release.
+
 Version 2.0.10 removes the quick-picker Apply button. Its change event immediately
 updates and autosaves the dialogue preset while retaining narrator, text, history,
 scroll and focus. Automated tests exercise the actual change listener and verify

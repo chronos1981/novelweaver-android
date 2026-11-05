@@ -1,4 +1,4 @@
-# NovelWeaver for Android 2.0.10
+# NovelWeaver for Android 2.1.0
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
@@ -29,6 +29,47 @@ Unsaved writing from earlier sessions is available separately under startup
 **Recovery copies…**. Opening a recovery copy creates an unlinked workspace; use
 Save as to choose its file. Starting empty keeps the last-file shortcut and
 meaningful recovery copies, but does not load either automatically.
+
+## Android Auto and background narration
+
+1. Open the project on your phone and **Save** it to a `.novel.json` file before driving.
+2. For this directly installed APK, open **Android Auto settings** on the phone.
+   Tap **Version** to expand the version details, then tap that information ten
+   times and accept developer mode. In the three-dot menu open **Developer
+   settings → Unknown sources**. This is Android Auto's media-app testing option,
+   separate from Android's permission to install APKs.
+3. Reconnect Android Auto. Check **Customize launcher** if NovelWeaver is hidden.
+4. Open **NovelWeaver → book → chapter** on the car display. Play/pause and
+   previous/next chapter also work from supported steering-wheel controls.
+
+Phone Listen playback now runs in the same native media service. It continues
+with the screen off or editor closed. The playback notification and lock screen
+provide media controls. Android Auto uses a listening interface; editing and file
+selection stay on the phone. Select a chapter before narration starts: connecting
+the car never starts speech by itself.
+
+Saved narration/dialogue presets, speed, pitch, quote boundaries, imported voice
+defaults, and pronunciation substitutions work in the background. Missing tagged
+voices fall back to an installed Listen voice or the device default. Android TTS
+engines determine voice availability; online voices still require a connection.
+The car's previous/next controls navigate chapters; the phone Listen controls
+continue to navigate paragraphs.
+
+While the editor is open, the car sees its current project. When the service
+starts without the editor, it reads the last selected project from the actual
+file, not cached recovery writing. Keep cloud files accessible/offline or save a
+local copy. A missing, slow, or inaccessible file asks you to reopen it on the
+phone while parked; it never silently substitutes an older cached manuscript.
+
+Pause/resume keeps the spoken position while the service lives, where the TTS
+engine supplies word ranges. After a service/process restart, playback resumes
+from the last paragraph. Audio interruptions pause narration; temporary focus
+loss can resume automatically when focus returns. Disconnecting headphones pauses
+without automatically restarting. Paused playback releases its wake lock and
+removes its foreground notification after five minutes of inactivity.
+
+This build adds Android Auto media support for personal testing. It has not been
+verified in a physical car or certified for Google Play distribution.
 
 ## Save files and use Drive
 

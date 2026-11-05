@@ -38,7 +38,7 @@ public final class MainActivity extends Activity {
     private ValueCallback<Uri[]> upload;
     private ProjectSession session;
     private KeyVault vault;
-    private Narrator narrator;
+    private PlaybackClient narrator;
     private Pending pending;
     private boolean initialized,destroyed;
     private static final class Pending {
@@ -77,7 +77,7 @@ public final class MainActivity extends Activity {
                 }catch(Exception ignored){}return 0;
             }
         });
-        vault=new KeyVault(this);narrator=new Narrator(this,this::post);
+        vault=new KeyVault(this);narrator=new PlaybackClient(this,this::post);
         WebSettings settings=web.getSettings();settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(true);settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(true);settings.setSupportMultipleWindows(false);
@@ -152,7 +152,9 @@ public final class MainActivity extends Activity {
         if(destroyed||web==null||!APP_URL.equals(web.getUrl()))return;
         web.evaluateJavascript("window.AndroidHost&&window.AndroidHost.receive("+message+")",null);
     });}
-    private void success(String id,Object result){try{post(new JSONObject().put("id",id).put("ok",true).put("result",result==null?JSONObject.NULL:result));}catch(Exception ignored){}}
+    private void success(String id,Object result){try{if(result instanceof JSONObject&&Arrays.asList("opened","recovery").contains(((JSONObject)result).optString("status"))&&((JSONObject)result).optJSONObject("project")!=null)publishLibrary(((JSONObject)result).getJSONObject("project"));post(new JSONObject().put("id",id).put("ok",true).put("result",result==null?JSONObject.NULL:result));}catch(Exception ignored){}}
+    private void publishLibrary(JSONObject project){String uri=session.currentUri();runOnUiThread(()->narrator.project(project,uri));}
+    private void publishLibrary() throws Exception {String value=session.currentJson();if(value!=null)publishLibrary(new JSONObject(value));}
     private void failure(String id,Exception e){try{post(new JSONObject().put("id",id).put("ok",false).put("error",e.getMessage()==null?"Operation failed.":e.getMessage()));}catch(Exception ignored){}}
     interface Job{Object run() throws Exception;}
     private void work(Executor executor,String id,Job job){executor.execute(()->{try{success(id,job.run());}catch(Exception e){failure(id,e);}});}
@@ -178,10 +180,10 @@ public final class MainActivity extends Activity {
                     runOnUiThread(()->{initialized=true;loading.setVisibility(View.GONE);});return result;
                 });break;
             case "autosave":
-                work(recoveryIO,id,()->{JSONObject r=session.recover(p.getString("json"));queueAuto();return r;});break;
+                work(recoveryIO,id,()->{JSONObject r=session.recover(p.getString("json"));publishLibrary();queueAuto();return r;});break;
             case "save":
                 recoveryIO.execute(()->{try{
-                    session.recover(p.getString("json"));cancelAuto();
+                    session.recover(p.getString("json"));publishLibrary();cancelAuto();
                     if(session.currentUri()==null||p.optBoolean("saveAs"))runOnUiThread(()->pick(id,"save",p,SAVE));
                     else work(documentIO,id,()->session.save(p.getString("json"),null,p.optString("revision",null)));
                 }catch(Exception e){failure(id,e);}});break;
@@ -189,16 +191,20 @@ public final class MainActivity extends Activity {
             case "openLast":cancelAuto();work(documentIO,id,session::openLast);break;
             case "openRecovery":cancelAuto();work(documentIO,id,()->session.openRecovery(p.getString("id")));break;
             case "reloadDisk":cancelAuto();work(documentIO,id,()->{String uri=session.currentUri();if(uri==null)throw new IOException("No project file is selected.");return session.open(uri);});break;
-            case "new":cancelAuto();work(documentIO,id,()->session.startNew(p.getString("json")));break;
+            case "new":cancelAuto();work(documentIO,id,()->{JSONObject r=session.startNew(p.getString("json"));publishLibrary();return r;});break;
             case "key":work(recoveryIO,id,()->{vault.save(p.optString("key",""),p.optBoolean("remember"));return new JSONObject().put("saved",true);});break;
             case "http":
                 QuillNetwork.Request request=new QuillNetwork.Request();requests.put(id,request);
                 work(networkIO,id,()->{try{return QuillNetwork.execute(p,request);}finally{requests.remove(id);}});break;
             case "cancel":QuillNetwork.Request r=requests.get(p.optString("requestId"));if(r!=null)networkIO.execute(r::cancel);success(id,null);break;
-            case "speak":narrator.speak(p);success(id,null);break;
-            case "speechStop":narrator.stop();success(id,null);break;
-            case "speechPause":narrator.pause();success(id,null);break;
-            case "speechResume":narrator.resume();success(id,null);break;
+            case "mediaPlay":
+                // A native speech queue snapshots this project before WebView can be suspended.
+                JSONObject project=ProjectSession.validate(p.getString("json"));
+                narrator.project(project,session.currentUri());
+                narrator.command(action,p,()->success(id,null),e->failure(id,e));break;
+            case "speak":case "speechStop":case "speechPause":case "speechResume":
+            case "mediaState":case "mediaParagraph":case "mediaSettings":
+                narrator.command(action,p,()->success(id,null),e->failure(id,e));break;
             case "exportStart":work(recoveryIO,id,()->{
                 String token=UUID.randomUUID().toString();File file=File.createTempFile("nw-export-",".tmp",getCacheDir());
                 exports.put(token,new Export(file,p.getString("name"),p.optString("mime","application/octet-stream").split(";")[0]));return new JSONObject().put("token",token);
@@ -245,7 +251,7 @@ public final class MainActivity extends Activity {
         }
         Uri uri=data.getData();if(!item.action.equals("export"))rememberPermission(uri,data);
         if(item.action.equals("open"))work(documentIO,item.id,()->session.open(uri.toString()));
-        else if(item.action.equals("save"))work(documentIO,item.id,()->session.save(item.payload.getString("json"),uri.toString(),null));
+        else if(item.action.equals("save"))work(documentIO,item.id,()->{JSONObject r=session.save(item.payload.getString("json"),uri.toString(),null);publishLibrary();return r;});
         else work(documentIO,item.id,()->{
             Export out=exports.remove(item.payload.getString("token"));if(out==null)throw new IOException("Export session expired.");
             try(InputStream in=new FileInputStream(out.file);OutputStream target=getContentResolver().openOutputStream(uri,"wt")){
@@ -269,7 +275,7 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onPause(){
         if(initialized)web.evaluateJavascript("window.NWAndroid&&window.NWAndroid.pause()",null);
-        narrator.pause();super.onPause();
+        super.onPause();
     }
     @Override protected void onDestroy(){
         destroyed=true;cancelAuto();narrator.destroy();

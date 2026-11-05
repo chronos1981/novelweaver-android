@@ -1170,6 +1170,7 @@ const HELP_CATEGORIES=[['all','All topics'],['writing','Using NovelWeaver'],['sa
 function helpCode(code,label='Command or configuration'){return `<div class="help-code-block"><div class="help-code-head"><span>${h(label)}</span><button type="button" class="help-copy" data-action="help-copy" aria-label="Copy ${h(label)}">Copy</button></div><pre tabindex="0"><code>${h(code)}</code></pre></div>`}
 function helpLink(url,label){return `<a href="${h(url)}" target="_blank" rel="noopener noreferrer">${h(label)} <span class="help-external">↗</span></a>`}
 const HELP_TOPICS=[
+ {id:'android-auto',category:'listening',title:'Android Auto and background narration',summary:'Browse books and listen to chapters in your car.',keywords:'car android auto background screen off notification bluetooth',body:`<p>Open and save a project on the phone before driving. Android Auto shows NovelWeaver as a media app, with books and chapters. Select a chapter to start narration. Play/pause and previous/next chapter are available in the car and playback notification. Narration continues with the screen off, using saved narrator/dialogue presets and pronunciation rules.</p><p>When the editor is closed, the service reads the last project from its actual file. Cloud files must be accessible; download local voices and keep project files available offline before driving. A missing file is reported in the car; reopen it on the phone while parked. Editing stays on the phone.</p><p>For a directly installed APK, open Android Auto settings, tap Version information ten times, accept developer mode, then open the three-dot menu → Developer settings → Unknown sources. Reconnect Android Auto and check Customize launcher. This enables testing; it does not grant Google Play certification.</p><p>Pausing preserves the current spoken segment while the service lives. Restarting the service resumes from the last paragraph, not an exact audio timestamp. Narration pauses for audio interruptions or disconnected headphones. Offline playback needs local TTS voices; online voices require network access.</p>`},
  {id:'speech-tags',category:'writing',title:'Narration and dialogue speech tags',summary:'Assign paragraph roles, installed voices, speed and pitch.',keywords:'tts voice speech dialogue narration speaker pitch speed tags',body:`<p>In Write, open a paragraph’s <b>⋯ → Voice &amp; speech tag</b>. Set the Narrator (outside quotes) and Dialogue (inside quotes) independently. Each can use a saved preset or an installed voice, speed and pitch. Save voices. Blank values inherit the matching project defaults. Its badge opens both voice settings again. Remove tag returns to narration defaults.</p><p>Use <b>Listen → Narration &amp; dialogue defaults</b> to set shared voices and settings. Blank paragraph fields inherit that role’s settings. Blank role settings inherit the Listen voice and speed; normal pitch is 1. Untagged text uses narration outside quotes and dialogue inside quotes.</p><p>Matched straight or curly quotes use dialogue voices; narration outside quotes uses narrator settings in the same paragraph. Contractions and apostrophes are not dialogue. Unmatched quotes stay with the narrator. Open Saved voices to preview and save named Male/Female presets, then reuse them in paragraph tags or role defaults. Splitting copies the tag; merging requires matching tags. A speaker name is a label; choose a saved preset or installed voice. Speech tags travel with the .novel.json project, while voice availability depends on the device. Missing voices fall back with a warning. TXT, DOCX and EPUB exports contain the manuscript text without speech tags.</p>`},
  {id:'getting-started',category:'writing',title:'Start a series and write your first chapter',summary:'Books, chapters, paragraphs, and the library menu.',keywords:'new project manuscript library add book chapter rename beginner',body:`<p>A NovelWeaver project is a series containing books, chapters, paragraphs, and shared story threads.</p><ol><li>Open <b>More → Series and chapter settings → Manage</b> to rename your series. For a fresh workspace, use <b>Start empty project</b> there after exporting anything you want to keep.</li><li>Open the <b>Library</b> menu on a phone or use the left sidebar on a computer. <b>+ Add book</b> creates a book and its first chapter; <b>+ Chapter</b> adds a chapter to the current book.</li><li>Select a chapter, open <b>Write</b>, and type into its paragraph cards. Edits save locally as you work.</li><li>Use <b>Rename</b> to change the chapter title. Paragraph menus let you insert, move, or delete passages.</li></ol><p>Removing a book removes its chapters and associated history after confirmation. Export a project backup before removing material.</p><div class="help-actions"><button class="outline-button" data-view="write">Go to Write</button><button class="outline-button" data-action="library">Open Library</button></div>`},
  {id:'importing',category:'writing',title:'Import books or open a saved project',summary:'Add manuscripts without accidentally replacing your library.',keywords:'import open json docx word txt threads tags missing',body:`<p><b>More → Import books into library</b> adds books to your current project. Select one or several <code>.novel.json</code>, <code>.txt</code>, or <code>.docx</code> files.</p><p>NovelWeaver imports retain chapters, story-thread tags, review records, and history. Text and Word manuscripts do not contain NovelWeaver thread links; create and link threads after importing them. Word import simplifies formatting and does not preserve images, tables, footnotes, or layout.</p><p><b>More → Open a .novel.json project</b> replaces the current workspace after confirmation. Use this to restore a full project backup. Export the current workspace first.</p><p>If a book has no visible threads, check whether its source JSON actually includes thread definitions and paragraph <code>ThreadIds</code>. Importing plain text cannot reconstruct those links.</p><div class="help-actions"><button class="outline-button" data-action="import-book">Import books</button><button class="outline-button" data-action="export-project">Back up first</button></div>`},
@@ -1405,7 +1406,7 @@ async function desktopInitialize() {
     NWTTS.resume = () => DesktopHost.call('speechResume').catch(console.warn);
     window.dispatchEvent(new Event('nw-voices'));
   }
-  await androidChooseStartup(initial.startup||{});
+  await androidChooseStartup(initial.startup||{});DesktopHost.call('mediaSettings',{voice:S.listen.voice,rate:S.listen.rate,rules:S.listen.rules}).catch(console.warn);DesktopHost.call('mediaState').catch(console.warn);
   swapChapter(); desktopStatus();
 }
 function desktopConflict(result) {
@@ -1503,10 +1504,40 @@ async function desktopCommand(command) {
   finally { desktop.busy = false; desktopStatus(); }
 }
 document.addEventListener('click',async event=>{if(!event.target.closest('[data-action="android-previous"]'))return;try{const item=await DesktopHost.call('previousBackup');await DesktopHost.call('exportFinish',item)}catch(e){modal('Backup',`<p>${h(e.message)}</p>`)}});
+// Chapter narration runs entirely in the native service, including all quote/voice changes.
+const androidListenPlay=listenPlay;
+listenPlay=async function(){
+ if(!window.DesktopHost)return androidListenPlay();
+ const l=S.listen;
+ try{
+  if(l.paused){await DesktopHost.call('speechResume');return}
+  flushAllEdits();listenPrepare();const item=l.queue[l.index];if(!item){toast('No text to narrate');return}
+  l.pid=item.id;listenBookmark();
+  await DesktopHost.call('mediaPlay',{json:JSON.stringify(S.project),chapterId:item.chapterId,pid:item.id,wholeBook:l.scope==='book',options:{voice:l.voice,rate:l.rate,rules:l.rules}});
+ }catch(e){l.playing=l.paused=false;syncListenUI();toast('Speech: '+e.message)}
+};
+const androidListenSave=listenSave;
+listenSave=function(){androidListenSave();if(window.DesktopHost)DesktopHost.call('mediaSettings',{voice:S.listen.voice,rate:S.listen.rate,rules:S.listen.rules}).catch(console.warn)};
+window.AndroidHost?.on(event=>{
+ const m=event.data;if(m.type!=='mediaState')return;
+ const l=S.listen,chapter=S.project.Chapters.find(c=>c.Id===m.chapterId);
+ l.playing=!!m.playing;l.paused=!!m.paused;
+ if(chapter){
+  l.pid=m.pid;
+  l.queue=S.project.Chapters.filter(c=>c.BookId===chapter.BookId).flatMap(c=>c.Paragraphs.filter(p=>p.Text.trim()).map(p=>({id:p.Id,chapter:c.Title,chapterId:c.Id,text:p.Text})));
+  l.index=Math.max(0,l.queue.findIndex(p=>p.id===m.pid));
+  (l.bookmarks||={})[chapter.BookId]=m.pid;androidListenSave();
+  if(S.view==='listen'){S.bookId=chapter.BookId;S.chapterId=chapter.Id;const picker=$('#listen-chapter');if(picker)picker.value=chapter.Id}
+ }
+ syncListenUI();if(m.error)toast('Speech: '+m.error);
+});
+// Refresh state after returning from the car or lock screen, without starting playback.
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)DesktopHost.call('mediaState').catch(console.warn)});
+
 window.NWDesktop = {command:desktopCommand};
 window.addEventListener('nw-file-status',event=>desktopHandleResult(event.detail));
 window.NWAndroid={
-  pause(){if(desktop.starting)return;if(S.listen.playing)listenPause();flushAllEdits();saveLocal()},
+  pause(){if(desktop.starting)return;flushAllEdits();saveLocal()},
   back(){if($('#modal-host .modal')){const fn=modalResolve;closeModal();fn?.('cancel')}else if(quill.open)quillClose();else if(S.sidebarOpen)closeSidebar();else desktopCommand('close')}
 };
 document.addEventListener('keydown', event => {

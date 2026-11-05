@@ -4,7 +4,7 @@ const code=html.slice(html.indexOf('const desktop ='),html.indexOf('(async()=>{a
 const elements=new Map(),$=s=>{if(!elements.has(s))elements.set(s,{textContent:'',style:{}});return elements.get(s)};
 let prompts=0,calls=[];
 const context=vm.createContext({console,Date,setTimeout,clearTimeout,document:{addEventListener(){}},window:{addEventListener(){}},S:{project:{ModifiedAtUtc:'2026-11-04T00:00:00Z'},dirty:false},$,h:String,
- modal(){prompts++},DesktopHost:{async call(action,payload,signal){calls.push({action,payload,signal});return {status:'conflict',path:'Book.novel.json',project:{},revision:'r'}}}});
+ listenPlay(){},listenSave(){},modal(){prompts++},DesktopHost:{async call(action,payload,signal){calls.push({action,payload,signal});return {status:'conflict',path:'Book.novel.json',project:{},revision:'r'}}}});
 vm.runInContext(code+'\nglobalThis.api={desktopAutosave,desktopHandleResult,desktopStatus,desktop};',context);
 (async()=>{
  const {api}=context;

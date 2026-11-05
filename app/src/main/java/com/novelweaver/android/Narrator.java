@@ -19,11 +19,12 @@ final class Narrator {
     Narrator(Context context,Events events){
         this.events=events;
         tts=new TextToSpeech(context,status->{ready=status==TextToSpeech.SUCCESS;sendVoices();});
+        tts.setAudioAttributes(new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_MEDIA).setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH).build());
         tts.setOnUtteranceProgressListener(new UtteranceProgressListener(){
             public void onStart(String id){}
             public void onDone(String id){complete(id,null);}
             public void onError(String id){complete(id,"Speech playback failed.");}
-            public void onRangeStart(String id,int start,int end,int frame){if(id.equals(token))offset=base+start;}
+            public void onRangeStart(String id,int start,int end,int frame){if(id!=null&&id.equals(token))offset=base+start;}
         });
     }
     JSONArray voices(){
@@ -31,13 +32,15 @@ final class Narrator {
         try{for(Voice v:tts.getVoices())list.put(new JSONObject().put("id",v.getName()).put("name",v.getName()).put("local",!v.isNetworkConnectionRequired()).put("lang",v.getLocale().toLanguageTag()));}catch(Exception ignored){}
         return list;
     }
+    boolean isReady(){return ready;}
+    boolean canResume(){return paused&&key!=null;}
     private void sendVoices(){try{events.post(new JSONObject().put("type","voices").put("voices",voices()));}catch(Exception ignored){}}
     void speak(JSONObject p) throws Exception {
         if(!ready)throw new Exception("Speech engine is unavailable or still starting. Check Android text-to-speech settings.");
         stop();text=p.getString("text");voice=p.optString("voice","");rate=setting(p,"rate");pitch=setting(p,"pitch");key=p.getString("key");offset=0;play();
     }
     private void play() throws Exception {
-        if(voice.isEmpty())tts.setLanguage(Locale.getDefault());
+        if(voice.isEmpty()){Voice fallback=tts.getDefaultVoice();if(fallback!=null)tts.setVoice(fallback);else tts.setLanguage(Locale.getDefault());}
         else {boolean found=false;for(Voice v:tts.getVoices())if(v.getName().equals(voice)){tts.setVoice(v);found=true;break;}if(!found)throw new Exception("The selected speech voice is no longer installed.");}
         tts.setSpeechRate(rate);tts.setPitch(pitch);paused=false;base=Math.min(offset,text.length());token=key+":"+(++sequence);
         if(tts.speak(text.substring(base),TextToSpeech.QUEUE_FLUSH,new Bundle(),token)==TextToSpeech.ERROR)throw new Exception("Android could not start speech playback.");

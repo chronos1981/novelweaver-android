@@ -1,0 +1,13 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const code=fs.readFileSync(__dirname+'/../tools/android-auto.js','utf8');let receive,visibility,original=0,saves=0,flush=0,bookmarks=0,ui=0;const calls=[],notices=[];
+const item={Id:'p',Text:'He said “Hello.”'},chapter={Id:'c',BookId:'b',Title:'First',Paragraphs:[item]},project={Chapters:[chapter],Books:[{Id:'b'}]},l={queue:[{id:'p',chapterId:'c'}],index:0,voice:'v',rate:1.2,rules:[{word:'Alt’erra',said:'Al terra'}],scope:'chapter'};
+const host={async call(action,payload){calls.push({action,payload})}},c=vm.createContext({console,S:{project,listen:l,view:'listen'},window:{DesktopHost:host,AndroidHost:{on(fn){receive=fn}}},DesktopHost:host,document:{hidden:false,addEventListener(type,fn){visibility=fn}},listenPlay(){original++},listenSave(){saves++},listenPrepare(){},flushAllEdits(){flush++},listenBookmark(){bookmarks++},syncListenUI(){ui++},toast:t=>notices.push(t),$:()=>null});vm.runInContext(code+'\nglobalThis.api={play:listenPlay,save:listenSave}',c);
+(async()=>{
+ await c.api.play();assert.equal(calls.at(-1).action,'mediaPlay');assert.equal(calls.at(-1).payload.chapterId,'c');assert.equal(calls.at(-1).payload.wholeBook,false);assert.deepEqual(JSON.parse(calls.at(-1).payload.json),project);assert.equal(flush,1);assert.equal(bookmarks,1);assert.equal(original,0);
+ l.paused=true;await c.api.play();assert.equal(calls.at(-1).action,'speechResume');l.paused=false;c.api.save();assert.equal(calls.at(-1).action,'mediaSettings');assert.equal(calls.at(-1).payload.voice,'v');
+ receive({data:{type:'mediaState',playing:true,paused:false,pid:'p',chapterId:'c'}});assert.equal(l.playing,true);assert.equal(l.queue[0].text,item.Text);assert.equal(l.bookmarks.b,'p');assert.equal(c.S.chapterId,'c');
+ receive({data:{type:'mediaState',playing:false,paused:true}});assert.equal(l.playing,false);assert.equal(l.paused,true);visibility();assert.equal(calls.at(-1).action,'mediaState');
+ receive({data:{type:'mediaState',playing:false,error:'Voice unavailable'}});assert.equal(notices.at(-1),'Speech: Voice unavailable');assert(ui>0);
+ const adapter=fs.readFileSync(__dirname+'/../tools/desktop-integration.js','utf8');assert.doesNotMatch(adapter,/pause\(\).*listenPause/);const manifest=fs.readFileSync(__dirname+'/../app/src/main/AndroidManifest.xml','utf8');assert.match(manifest,/FOREGROUND_SERVICE_MEDIA_PLAYBACK/);assert.match(manifest,/android.media.browse.MediaBrowserService/);
+ console.log('PASS: native chapter queue requests, project/options snapshot, pause/resume, background state/bookmark updates, error reporting, Android Auto declaration and no Activity pause interruption.');
+})().catch(e=>{console.error(e);process.exitCode=1});
