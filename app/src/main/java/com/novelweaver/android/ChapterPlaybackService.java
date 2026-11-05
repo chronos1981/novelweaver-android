@@ -187,15 +187,19 @@ public final class ChapterPlaybackService extends MediaBrowserService {
             beginForeground();if(!takeFocus()){fail("Audio is in use by another app. Press Play to retry.");return;}
             SpeechPlan.Unit unit=queue.get(index);JSONObject request=unit.request("chapter:"+token);JSONArray voices=narrator.voices();boolean found=unit.voice.isEmpty();for(int i=0;i<voices.length();i++)if(unit.voice.equals(voices.optJSONObject(i).optString("id")))found=true;
             if(!found){String fallback=options.optString("voice","");boolean installed=false;for(int i=0;i<voices.length();i++)if(fallback.equals(voices.optJSONObject(i).optString("id")))installed=true;request.put("voice",installed?fallback:"");}
-            wake.acquire(10*60*1000L);narrator.speak(request);state=PlaybackState.STATE_PLAYING;remember();publish();
+            wake.acquire(10*60*1000L);narrator.speak(request);remember();publish();
         }catch(Exception e){fail(e.getMessage());}
     }
     private void speechEvent(JSONObject message){
         if(destroyed)return;
         if("voices".equals(message.optString("type"))){emit(message);return;}
+        if("speechStarted".equals(message.optString("type"))){
+            if(("chapter:"+generation).equals(message.optString("key"))&&state==PlaybackState.STATE_BUFFERING){state=PlaybackState.STATE_PLAYING;publish();}
+            return;
+        }
         if(!"speechComplete".equals(message.optString("type")))return;
         if(previewKey!=null&&previewKey.equals(message.optString("key"))){previewKey=null;emit(message);abandonFocus();stopForeground(STOP_FOREGROUND_REMOVE);foreground=false;stopSelf();return;}
-        if(!("chapter:"+generation).equals(message.optString("key"))||state!=PlaybackState.STATE_PLAYING)return;
+        if(!("chapter:"+generation).equals(message.optString("key"))||(state!=PlaybackState.STATE_PLAYING&&state!=PlaybackState.STATE_BUFFERING))return;
         if(!message.isNull("error")){fail(message.optString("error","Speech playback failed."));return;}
         if(index+1>=queue.size()){stop();return;}index++;startUnit();
     }
@@ -208,14 +212,14 @@ public final class ChapterPlaybackService extends MediaBrowserService {
             playChapter(id,pid,true);return;
         }
         if(state==PlaybackState.STATE_PAUSED&&narrator.isReady()&&narrator.canResume()){
-            try{beginForeground();if(!takeFocus()){fail("Audio is in use by another app.");return;}wake.acquire(10*60*1000L);narrator.resume();state=PlaybackState.STATE_PLAYING;publish();}catch(Exception e){fail(e.getMessage());}
+            try{beginForeground();if(!takeFocus()){fail("Audio is in use by another app.");return;}wake.acquire(10*60*1000L);state=PlaybackState.STATE_BUFFERING;narrator.resume();publish();}catch(Exception e){fail(e.getMessage());}
         }else startUnit();
     }
     private void pause(boolean focusLoss){
         if(state!=PlaybackState.STATE_PLAYING&&state!=PlaybackState.STATE_BUFFERING&&previewKey==null)return;
         if(previewKey!=null){String key=previewKey;stop();try{emit(new JSONObject().put("type","speechComplete").put("key",key).put("error","Voice preview interrupted."));}catch(JSONException ignored){}return;}
         ++planGeneration; // Cancel a pending chapter build as well as pending engine retries.
-        if(state==PlaybackState.STATE_BUFFERING){++generation;narrator.stop();state=PlaybackState.STATE_STOPPED;}else {narrator.pause();state=PlaybackState.STATE_PAUSED;}
+        if(state==PlaybackState.STATE_BUFFERING&&queue.isEmpty()){++generation;narrator.stop();state=PlaybackState.STATE_STOPPED;}else {narrator.pause();state=PlaybackState.STATE_PAUSED;}
         if(!focusLoss){resumeAfterFocus=false;abandonFocus();}releaseWake();remember();publish();main.removeCallbacks(idle);main.postDelayed(idle,5*60*1000L);
     }
     private void stop(){reset(true);}

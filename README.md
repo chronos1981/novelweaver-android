@@ -1,4 +1,4 @@
-# NovelWeaver for Android 2.1.1
+# NovelWeaver for Android 2.1.2
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
@@ -38,6 +38,13 @@ or resume, and Next/Previous to change chapters. Headset commands also work with
 the editor visible. After Android stops an idle service, Play can restore the
 saved project and bookmark without opening the editor; its file must still be
 accessible. Volume buttons keep their normal Android behavior.
+
+In 2.1.2 the speech engine synthesizes each speech unit to a private temporary
+audio clip, which NovelWeaver plays through its own MediaPlayer. This associates
+actual audio playback with the app's media session rather than the separate TTS
+engine process. Pause/resume retains the audio position. Synthesis completion
+does not advance narration: the audio must finish playing first. Clips are
+deleted on completion, Stop, chapter changes, errors and service destruction.
 
 1. Open the project on your phone and **Save** it to a `.novel.json` file before driving.
 2. For this directly installed APK, open **Android Auto settings** on the phone.

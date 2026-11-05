@@ -1,5 +1,23 @@
 # Completed validation
 
+Version 2.1.2 replaces direct TextToSpeech.speak playback with per-unit private
+file synthesis and an app-owned MediaPlayer using USAGE_MEDIA/CONTENT_TYPE_SPEECH.
+This addresses the audio-UID/session association that the 2.1.1 button handlers
+alone did not resolve on the user's headphones. It remains a proposed fix until
+the user verifies the physical Bluetooth route. Synthesis completion prepares
+the audio; only audio playback completion advances the native queue. The media
+session remains buffering until audio starts. Pause retains exact player
+position and also prevents pending synthesis from automatically starting audio.
+
+Validation: all 70 native tests and the Android debug build/lint pass. Fourteen
+new Narrator cases across Android 9/15 exercise local media attributes, audio
+completion versus synthesis completion, pause/resume without new synthesis,
+pause while synthesizing, replaced/late callbacks, synthesis rejection,
+playback errors, destruction and temporary clip cleanup. The service tests now
+fail immediately if any code calls direct TextToSpeech.speak and drive actual
+MediaPlayer completion callbacks through Robolectric. These are simulated
+framework tests; real-device Bluetooth button delivery still needs verification.
+
 Version 2.1.1 adds an explicit media-button restart receiver, links the visible
 editor Activity to the narration controller, declares local speech playback and
 the Play/Pause action, and handles headset toggle, Play, Pause, Stop and chapter

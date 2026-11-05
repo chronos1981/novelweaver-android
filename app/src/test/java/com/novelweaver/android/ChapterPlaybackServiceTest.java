@@ -26,12 +26,14 @@ import static org.robolectric.Shadows.shadowOf;
 public class ChapterPlaybackServiceTest {
     @Implements(TextToSpeech.class)
     public static class ControlledSpeech extends ShadowTextToSpeech {
-        String spoken,key;int calls;
-        @Implementation protected int speak(CharSequence text,int mode,Bundle params,String id){spoken=text.toString();key=id;calls++;return TextToSpeech.SUCCESS;}
+        String spoken,key;int calls;boolean autoSynthesize=true;int synthResult=TextToSpeech.SUCCESS;
+        @Implementation protected int speak(CharSequence text,int mode,Bundle params,String id){throw new AssertionError("Speech must play in the app, not the TTS engine process");}
+        @Implementation protected int synthesizeToFile(CharSequence text,Bundle params,File file,String id){spoken=text.toString();key=id;calls++;if(autoSynthesize&&synthResult==TextToSpeech.SUCCESS)getUtteranceProgressListener().onDone(id);return synthResult;}
     }
     ServiceController<ChapterPlaybackService> controller;ChapterPlaybackService service;ControlledSpeech engine;
     JSONObject project() throws Exception {return new JSONObject("{\"Id\":\"project\",\"Title\":\"Series\",\"Books\":[{\"Id\":\"b\",\"Title\":\"Book\"}],\"SpeechDefaults\":{\"Narration\":{\"Voice\":\"narrator\"},\"Dialogue\":{\"Voice\":\"dialogue\"}},\"Chapters\":[{\"Id\":\"c1\",\"Title\":\"First\",\"BookId\":\"b\",\"Paragraphs\":[{\"Id\":\"p1\",\"Text\":\"He said, “Hello.” Then left.\"},{\"Id\":\"p2\",\"Text\":\"Next paragraph.\"}]},{\"Id\":\"c2\",\"Title\":\"Second\",\"BookId\":\"b\",\"Paragraphs\":[{\"Id\":\"p3\",\"Text\":\"Next chapter.\"}]}]}");}
     @Before public void setup() throws Exception {
+        ShadowMediaPlayer.setMediaInfoProvider(source->new ShadowMediaPlayer.MediaInfo(60000,0));
         Context c=RuntimeEnvironment.getApplication();c.getSharedPreferences("car-playback",0).edit().clear().commit();new File(c.getFilesDir(),"last-project.json").delete();
         controller=Robolectric.buildService(ChapterPlaybackService.class).create();service=controller.get();
         engine=(ControlledSpeech)shadowOf(ShadowTextToSpeech.getLastTextToSpeechInstance());
@@ -40,13 +42,14 @@ public class ChapterPlaybackServiceTest {
     }
     @After public void cleanup(){controller.destroy();}
     void pump(BooleanSupplier condition) throws Exception {long end=System.currentTimeMillis()+4000;while(!condition.getAsBoolean()&&System.currentTimeMillis()<end){shadowOf(Looper.getMainLooper()).idle();Thread.sleep(5);}shadowOf(Looper.getMainLooper()).idle();assertTrue("Playback did not reach expected state",condition.getAsBoolean());}
-    void play() throws Exception {service.command("mediaPlay",new JSONObject("{\"chapterId\":\"c1\",\"wholeBook\":true}"));pump(()->service.snapshot().optBoolean("playing")&&engine.calls>0);}
-    void done(){engine.getUtteranceProgressListener().onDone(engine.key);shadowOf(Looper.getMainLooper()).idle();}
+    MediaPlayer player(){Narrator narrator=ReflectionHelpers.getField(service,"narrator");return ReflectionHelpers.getField(narrator,"player");}
+    void play() throws Exception {service.command("mediaPlay",new JSONObject("{\"chapterId\":\"c1\",\"wholeBook\":true}"));pump(()->player()!=null&&player().isPlaying());}
+    void done(){shadowOf(player()).invokeCompletionListener();shadowOf(Looper.getMainLooper()).idle();}
     Intent button(int action,int code,int repeat){return new Intent(Intent.ACTION_MEDIA_BUTTON).putExtra(Intent.EXTRA_KEY_EVENT,new KeyEvent(0,0,action,code,repeat));}
     void press(int code){service.onStartCommand(button(KeyEvent.ACTION_DOWN,code,0),0,1);service.onStartCommand(button(KeyEvent.ACTION_UP,code,0),0,2);shadowOf(Looper.getMainLooper()).idle();}
     @Test public void headsetTogglePausesAndResumesExactlyOncePerPress() throws Exception {
         play();int calls=engine.calls;press(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);assertTrue(service.snapshot().getBoolean("paused"));assertEquals(calls,engine.calls);
-        press(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);assertTrue(service.snapshot().getBoolean("playing"));assertEquals(calls+1,engine.calls);
+        press(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);assertTrue(service.snapshot().getBoolean("playing"));assertEquals(calls,engine.calls);assertTrue(player().isPlaying());
         press(KeyEvent.KEYCODE_HEADSETHOOK);assertTrue(service.snapshot().getBoolean("paused"));
         press(KeyEvent.KEYCODE_HEADSETHOOK);assertTrue(service.snapshot().getBoolean("playing"));
     }
@@ -98,8 +101,8 @@ public class ChapterPlaybackServiceTest {
     }
     @Test public void pauseResumeAndStaleCompletionCannotAdvance() throws Exception {
         play();String old=engine.key;service.command("speechPause",new JSONObject());assertTrue(service.snapshot().getBoolean("paused"));engine.getUtteranceProgressListener().onDone(old);shadowOf(Looper.getMainLooper()).idle();assertEquals(1,engine.calls);
-        service.command("speechResume",new JSONObject());assertTrue(service.snapshot().getBoolean("playing"));assertEquals(2,engine.calls);assertEquals("He said, ",engine.spoken);
-        service.command("speechStop",new JSONObject());engine.getUtteranceProgressListener().onDone(engine.key);shadowOf(Looper.getMainLooper()).idle();assertFalse(service.snapshot().getBoolean("playing"));assertEquals(2,engine.calls);
+        service.command("speechResume",new JSONObject());shadowOf(Looper.getMainLooper()).idle();assertTrue(service.snapshot().getBoolean("playing"));assertEquals(1,engine.calls);assertEquals("He said, ",engine.spoken);
+        service.command("speechStop",new JSONObject());engine.getUtteranceProgressListener().onDone(engine.key);shadowOf(Looper.getMainLooper()).idle();assertFalse(service.snapshot().getBoolean("playing"));assertEquals(1,engine.calls);
     }
     @Test public void notificationNextPreviousAndAudioInterruption() throws Exception {
         play();service.onStartCommand(new Intent().setAction("next"),0,1);assertEquals("c2",service.snapshot().optString("chapterId"));service.onStartCommand(new Intent().setAction("previous"),0,2);assertEquals("c1",service.snapshot().optString("chapterId"));
