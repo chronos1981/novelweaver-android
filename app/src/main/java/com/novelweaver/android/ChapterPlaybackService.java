@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.*;
 import android.service.media.MediaBrowserService;
 import android.util.Base64;
+import android.view.KeyEvent;
 import org.json.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -51,7 +52,15 @@ public final class ChapterPlaybackService extends MediaBrowserService {
         wake=((PowerManager)getSystemService(POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,"NovelWeaver:chapter");wake.setReferenceCounted(false);
         getSystemService(NotificationManager.class).createNotificationChannel(new NotificationChannel(CHANNEL,"Chapter narration",NotificationManager.IMPORTANCE_LOW));
         media=new MediaSession(this,"NovelWeaver chapters");media.setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS|MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS);
+        // Headset controls must address this session both while the editor is open
+        // and after Android has stopped the service during a long pause.
+        media.setPlaybackToLocal(attrs);
+        ComponentName buttons=new ComponentName(this,HeadsetButtonReceiver.class);
+        if(Build.VERSION.SDK_INT>=31)media.setMediaButtonBroadcastReceiver(buttons);
+        else media.setMediaButtonReceiver(PendingIntent.getBroadcast(this,0,
+            new Intent(Intent.ACTION_MEDIA_BUTTON).setComponent(buttons),PendingIntent.FLAG_UPDATE_CURRENT));
         media.setSessionActivity(openApp());media.setCallback(new MediaSession.Callback(){
+            @Override public boolean onMediaButtonEvent(Intent intent){return handleMediaButton(intent)||super.onMediaButtonEvent(intent);}
             @Override public void onPlay(){whenLoaded(()->resume());}
             @Override public void onPause(){pause(false);}
             @Override public void onStop(){stop();}
@@ -69,9 +78,35 @@ public final class ChapterPlaybackService extends MediaBrowserService {
         publish();loadLastProject();
     }
     @Override public IBinder onBind(Intent intent){if(LOCAL.equals(intent.getAction()))return new LocalBinder();return super.onBind(intent);}
+    MediaController mediaController(){return media.getController();}
     @Override public int onStartCommand(Intent intent,int flags,int startId){
-        if(intent!=null){String a=intent.getAction();if("pause".equals(a))pause(false);else if("play".equals(a))whenLoaded(()->resume());else if("next".equals(a))skipChapter(1);else if("previous".equals(a))skipChapter(-1);else if("stop".equals(a))stop();else if("android.media.action.MEDIA_PLAY_FROM_SEARCH".equals(a))whenLoaded(()->search(intent.getStringExtra(android.app.SearchManager.QUERY)));else if(Intent.ACTION_MEDIA_BUTTON.equals(a)){android.view.KeyEvent key=intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);if(key!=null&&key.getAction()==android.view.KeyEvent.ACTION_DOWN)media.getController().dispatchMediaButtonEvent(key);}}
+        if(intent!=null){String a=intent.getAction();if("pause".equals(a))pause(false);else if("play".equals(a))whenLoaded(()->resume());else if("next".equals(a))skipChapter(1);else if("previous".equals(a))skipChapter(-1);else if("stop".equals(a))stop();else if("android.media.action.MEDIA_PLAY_FROM_SEARCH".equals(a))whenLoaded(()->search(intent.getStringExtra(android.app.SearchManager.QUERY)));else if(Intent.ACTION_MEDIA_BUTTON.equals(a)&&HeadsetButtonReceiver.isMediaKey(intent)){
+            // The receiver used startForegroundService: post the notification now,
+            // before waiting for file access or speech-engine initialization.
+            KeyEvent key=intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+            if(key.getAction()==KeyEvent.ACTION_DOWN&&key.getRepeatCount()==0){beginForeground();handleMediaButton(intent);}
+        }}
         return START_NOT_STICKY;
+    }
+    boolean handleMediaButton(Intent intent){
+        if(!HeadsetButtonReceiver.isMediaKey(intent))return false;
+        KeyEvent key=intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
+        // Each press arrives as DOWN + UP; holding a button can repeat DOWN.
+        if(key.getAction()!=KeyEvent.ACTION_DOWN||key.getRepeatCount()!=0)return true;
+        whenLoaded(()->{
+            switch(key.getKeyCode()){
+                case KeyEvent.KEYCODE_HEADSETHOOK:case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                    if(state==PlaybackState.STATE_PLAYING||state==PlaybackState.STATE_BUFFERING)pause(false);else resume();break;
+                case KeyEvent.KEYCODE_MEDIA_PLAY:resume();break;
+                case KeyEvent.KEYCODE_MEDIA_PAUSE:pause(false);break;
+                case KeyEvent.KEYCODE_MEDIA_STOP:stop();break;
+                case KeyEvent.KEYCODE_MEDIA_NEXT:skipChapter(1);break;
+                case KeyEvent.KEYCODE_MEDIA_PREVIOUS:skipChapter(-1);break;
+            }
+            if(foreground&&(state==PlaybackState.STATE_STOPPED||state==PlaybackState.STATE_ERROR)){
+                stopForeground(STOP_FOREGROUND_REMOVE);foreground=false;stopSelf();
+            }
+        });return true;
     }
     @Override public BrowserRoot onGetRoot(String pkg,int uid,Bundle hints){
         // Check the package actually belongs to the binder caller before exposing manuscript titles.
@@ -152,15 +187,19 @@ public final class ChapterPlaybackService extends MediaBrowserService {
             beginForeground();if(!takeFocus()){fail("Audio is in use by another app. Press Play to retry.");return;}
             SpeechPlan.Unit unit=queue.get(index);JSONObject request=unit.request("chapter:"+token);JSONArray voices=narrator.voices();boolean found=unit.voice.isEmpty();for(int i=0;i<voices.length();i++)if(unit.voice.equals(voices.optJSONObject(i).optString("id")))found=true;
             if(!found){String fallback=options.optString("voice","");boolean installed=false;for(int i=0;i<voices.length();i++)if(fallback.equals(voices.optJSONObject(i).optString("id")))installed=true;request.put("voice",installed?fallback:"");}
-            wake.acquire(10*60*1000L);narrator.speak(request);state=PlaybackState.STATE_PLAYING;remember();publish();
+            wake.acquire(10*60*1000L);narrator.speak(request);remember();publish();
         }catch(Exception e){fail(e.getMessage());}
     }
     private void speechEvent(JSONObject message){
         if(destroyed)return;
         if("voices".equals(message.optString("type"))){emit(message);return;}
+        if("speechStarted".equals(message.optString("type"))){
+            if(("chapter:"+generation).equals(message.optString("key"))&&state==PlaybackState.STATE_BUFFERING){state=PlaybackState.STATE_PLAYING;publish();}
+            return;
+        }
         if(!"speechComplete".equals(message.optString("type")))return;
         if(previewKey!=null&&previewKey.equals(message.optString("key"))){previewKey=null;emit(message);abandonFocus();stopForeground(STOP_FOREGROUND_REMOVE);foreground=false;stopSelf();return;}
-        if(!("chapter:"+generation).equals(message.optString("key"))||state!=PlaybackState.STATE_PLAYING)return;
+        if(!("chapter:"+generation).equals(message.optString("key"))||(state!=PlaybackState.STATE_PLAYING&&state!=PlaybackState.STATE_BUFFERING))return;
         if(!message.isNull("error")){fail(message.optString("error","Speech playback failed."));return;}
         if(index+1>=queue.size()){stop();return;}index++;startUnit();
     }
@@ -173,14 +212,14 @@ public final class ChapterPlaybackService extends MediaBrowserService {
             playChapter(id,pid,true);return;
         }
         if(state==PlaybackState.STATE_PAUSED&&narrator.isReady()&&narrator.canResume()){
-            try{beginForeground();if(!takeFocus()){fail("Audio is in use by another app.");return;}wake.acquire(10*60*1000L);narrator.resume();state=PlaybackState.STATE_PLAYING;publish();}catch(Exception e){fail(e.getMessage());}
+            try{beginForeground();if(!takeFocus()){fail("Audio is in use by another app.");return;}wake.acquire(10*60*1000L);state=PlaybackState.STATE_BUFFERING;narrator.resume();publish();}catch(Exception e){fail(e.getMessage());}
         }else startUnit();
     }
     private void pause(boolean focusLoss){
         if(state!=PlaybackState.STATE_PLAYING&&state!=PlaybackState.STATE_BUFFERING&&previewKey==null)return;
         if(previewKey!=null){String key=previewKey;stop();try{emit(new JSONObject().put("type","speechComplete").put("key",key).put("error","Voice preview interrupted."));}catch(JSONException ignored){}return;}
         ++planGeneration; // Cancel a pending chapter build as well as pending engine retries.
-        if(state==PlaybackState.STATE_BUFFERING){++generation;narrator.stop();state=PlaybackState.STATE_STOPPED;}else {narrator.pause();state=PlaybackState.STATE_PAUSED;}
+        if(state==PlaybackState.STATE_BUFFERING&&queue.isEmpty()){++generation;narrator.stop();state=PlaybackState.STATE_STOPPED;}else {narrator.pause();state=PlaybackState.STATE_PAUSED;}
         if(!focusLoss){resumeAfterFocus=false;abandonFocus();}releaseWake();remember();publish();main.removeCallbacks(idle);main.postDelayed(idle,5*60*1000L);
     }
     private void stop(){reset(true);}
@@ -223,7 +262,7 @@ public final class ChapterPlaybackService extends MediaBrowserService {
     // MediaStyle notifications with a MediaSession are exempt from POST_NOTIFICATIONS.
     @android.annotation.SuppressLint("NotificationPermission")
     private void publish(){
-        if(media==null)return;long actions=PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PLAY_FROM_MEDIA_ID|PlaybackState.ACTION_PLAY_FROM_SEARCH|PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_STOP|PlaybackState.ACTION_SKIP_TO_NEXT|PlaybackState.ACTION_SKIP_TO_PREVIOUS;
+        if(media==null)return;long actions=PlaybackState.ACTION_PLAY_PAUSE|PlaybackState.ACTION_PLAY|PlaybackState.ACTION_PLAY_FROM_MEDIA_ID|PlaybackState.ACTION_PLAY_FROM_SEARCH|PlaybackState.ACTION_PAUSE|PlaybackState.ACTION_STOP|PlaybackState.ACTION_SKIP_TO_NEXT|PlaybackState.ACTION_SKIP_TO_PREVIOUS;
         PlaybackState.Builder playback=new PlaybackState.Builder().setActions(actions).setState(state,PlaybackState.PLAYBACK_POSITION_UNKNOWN,state==PlaybackState.STATE_PLAYING?1:0);
         if(state==PlaybackState.STATE_ERROR)playback.setErrorMessage(error);media.setPlaybackState(playback.build());
         if(!queue.isEmpty()){
