@@ -1,5 +1,23 @@
 # Completed validation
 
+Version 2.3.0 replaces the flat Bookcase with an offline CSS 3D library:
+wood-grain shelves, lit series labels, cover/spine rotation, selected-book
+pull-forward animation and an Open book / Details card. Details reads the full
+back cover without opening or changing the project, supports zoom, and ignores
+late replies after its dialog closes. Missing back covers have an empty state.
+Manage covers now accepts SpineCover alongside FrontCover and BackCover.
+Optional spine artwork survives cleaning, JSON import, saving and shelf reload;
+older projects need no migration. EPUB/Word keep their front/back export layout.
+
+Validation: all 13 JavaScript test files; 80 native unit tests; Android lint,
+assembly and matching signing-certificate verification. The bundled UI browser
+flow exercised selection without opening, cover/spine modes, imported spine
+artwork, full-resolution back cover and zoom, absent back artwork, closed-dialog
+reply suppression, spine upload/removal/re-addition, normalized JSON retention,
+and all existing multi-file imports and safe project switches. Phone and desktop
+screenshots were inspected. No HTTP requests or runtime 3D dependencies were
+needed. Physical-device touch/performance checks remain manual.
+
 Version 2.2.0 adds a persistent device-local Bookcase beside Edit chapter in Read.
 Multiple JSON series and individual EPUB/DOCX/TXT/JSON books can be imported.
 Each shelf stores a complete independent project; imports retain source files,

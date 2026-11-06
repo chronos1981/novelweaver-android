@@ -19,6 +19,12 @@ public class BookcaseStoreTest {
         assertEquals("Series A",shelf.getString("title"));assertEquals("thumbnail",shelf.getJSONArray("books").getJSONObject(0).getString("cover"));
         JSONObject restored=restarted.read(id).getJSONObject("project");assertTrue(restored.getJSONObject("CustomFutureField").getBoolean("keep"));assertEquals("original full cover",restored.getJSONArray("Books").getJSONObject(0).getJSONObject("FrontCover").getString("DataUrl"));assertEquals("voice",restored.getJSONArray("Chapters").getJSONObject(0).getJSONArray("Paragraphs").getJSONObject(0).getJSONObject("Speech").getJSONObject("Dialogue").getString("ProfileId"));
     }
+    @Test public void spineArtworkSurvivesShelfRestartAndAppearsInCatalog() throws Exception {
+        JSONObject p=new JSONObject(project("Spines"));p.getJSONArray("Books").getJSONObject(0).put("SpineCover",new JSONObject().put("DataUrl","narrow spine").put("Width",80).put("Height",1200)).put("BackCover",new JSONObject().put("DataUrl","full back"));
+        String id=store.put("",p.toString(),null).getString("id");BookcaseStore restarted=new BookcaseStore(new File(directory,"shelves"),cover->cover.optString("DataUrl").equals("narrow spine")?"spine thumbnail":"front thumbnail");
+        JSONObject book=restarted.list(id).getJSONArray("shelves").getJSONObject(0).getJSONArray("books").getJSONObject(0);assertEquals("spine thumbnail",book.getString("spine"));assertEquals("front thumbnail",book.getString("cover"));
+        JSONObject original=restarted.read(id).getJSONObject("project").getJSONArray("Books").getJSONObject(0);assertEquals(80,original.getJSONObject("SpineCover").getInt("Width"));assertEquals("full back",original.getJSONObject("BackCover").getString("DataUrl"));
+    }
     @Test public void identicalReimportDoesNotCreateAnotherShelf() throws Exception {
         String value=project("Series");JSONObject first=store.put("",value,null),again=store.put("",new JSONObject(value).toString(2),null);
         assertEquals(first.getString("id"),again.getString("id"));assertEquals("duplicate",again.getString("status"));assertEquals(1,store.list("").getJSONArray("shelves").length());

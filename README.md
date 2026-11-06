@@ -1,4 +1,4 @@
-# NovelWeaver for Android 2.2.0
+# NovelWeaver for Android 2.3.0
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
@@ -8,8 +8,18 @@ to edit your writing and does not need a local web server.
 ## Bookcase
 
 In **Read**, select **Bookcase** immediately to the right of **Edit chapter**.
-Each series has its own shelf, with books shown by front cover. Tap a cover to
-open that book in Read. Books without artwork receive a titled cover.
+Each series has its own lit wooden shelf. Books have 3D covers, spines and page
+edges. Tap a book to pull it forward, then choose **Open book** to read it.
+Use **Spines / Covers** to rotate the books, and swipe a shelf to browse.
+Books without artwork receive a titled cover. Animations respect reduced-motion
+preferences. The library works offline with no additional rendering download.
+
+**Details** shows the selected book’s full back cover. Tap it to zoom and swipe
+the enlarged image. A book without back artwork shows a clear empty state.
+In **Manage covers**, add, replace or remove **Front cover**, **Spine image**,
+and **Back cover** separately. Use a tall, narrow image for the spine. All three
+images are saved in the project and preserved by JSON import and backup.
+EPUB and DOCX export continue to include the front and back covers.
 
 - **Import series** accepts multiple `.novel.json` projects, creating a shelf for each series.
 - **Import books** accepts multiple EPUB, DOCX, TXT, or `.novel.json` files. Choose an existing shelf or name a new series.
@@ -21,11 +31,13 @@ use **Save as** for a separate project backup. EPUB imports include readable
 text, chapter order, author and available front cover; page layouts and DRM are
 not supported.
 
-<img src="docs/screenshots/bookcase.png" width="300" alt="Bookcase with a shelf for each series and selectable book covers">
+<img src="docs/screenshots/bookcase.png" width="300" alt="Interactive wooden bookcase with 3D books and a selected-book action panel">
+<img src="docs/screenshots/bookcase-spines.png" width="300" alt="The library with books rotated to show their spines">
+<img src="docs/screenshots/bookcase-back-cover.png" width="300" alt="Details displays the selected book’s back cover">
 
 ## Screenshots
 
-The gallery covers the Android app’s main features. These are captures of the [2.1.3 bundled editor](https://github.com/chronos1981/novelweaver-android/pull/2), rendered at a phone-sized **430 × 1000** viewport with demonstration manuscripts, covers, and voice names. Native Android status bars and document-picker dialogs are not included. Click any image to open it at full size.
+The gallery covers the Android app’s main features. The Bookcase and Manage covers images show version 2.3.0; the other images are captures of the [2.1.3 bundled editor](https://github.com/chronos1981/novelweaver-android/pull/2), rendered at a phone-sized **430 × 1000** viewport with demonstration manuscripts, covers, and voice names. Native Android status bars and document-picker dialogs are not included. Click any image to open it at full size.
 
 <table>
 <tr><td align="center" valign="top"><a href="docs/screenshots/write.png"><img src="docs/screenshots/write.png" width="240" alt="Writing editor in NovelWeaver for Android"></a><br><strong>Writing editor</strong><br><sub>Edit paragraphs, choose dialogue presets, and track edit counts.</sub></td><td align="center" valign="top"><a href="docs/screenshots/listen.png"><img src="docs/screenshots/listen.png" width="240" alt="Listen and voice filters in NovelWeaver for Android"></a><br><strong>Listen and voice filters</strong><br><sub>Choose chapter/book range, language, local or online voices, speed, and playback controls.</sub></td></tr>
@@ -80,7 +92,7 @@ The gallery covers the Android app’s main features. These are captures of the 
 
 <table>
 <tr><td align="center" valign="top"><a href="docs/screenshots/startup.png"><img src="docs/screenshots/startup.png" width="240" alt="Startup and recovery choices in NovelWeaver for Android"></a><br><strong>Startup and recovery choices</strong><br><sub>Start empty, open the last actual file, choose another project, or inspect recovery copies.</sub></td><td align="center" valign="top"><a href="docs/screenshots/project-files.png"><img src="docs/screenshots/project-files.png" width="240" alt="Project files and backups in NovelWeaver for Android"></a><br><strong>Project files and backups</strong><br><sub>Open, save, Save as, and export a previous-file backup through Android document providers.</sub></td></tr>
-<tr><td align="center" valign="top"><a href="docs/screenshots/import-export.png"><img src="docs/screenshots/import-export.png" width="240" alt="Import and project export in NovelWeaver for Android"></a><br><strong>Import and project export</strong><br><sub>Import books and export complete projects, including threads and history.</sub></td><td align="center" valign="top"><a href="docs/screenshots/book-covers.png"><img src="docs/screenshots/book-covers.png" width="240" alt="Front and back covers in NovelWeaver for Android"></a><br><strong>Front and back covers</strong><br><sub>Manage cover images and author metadata for reading and book exports.</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/import-export.png"><img src="docs/screenshots/import-export.png" width="240" alt="Import and project export in NovelWeaver for Android"></a><br><strong>Import and project export</strong><br><sub>Import books and export complete projects, including threads and history.</sub></td><td align="center" valign="top"><a href="docs/screenshots/book-covers.png"><img src="docs/screenshots/book-covers.png" width="240" alt="Front, spine and back artwork in NovelWeaver for Android"></a><br><strong>Front, spine and back covers</strong><br><sub>Manage cover images and author metadata for reading and book exports.</sub></td></tr>
 <tr><td align="center" valign="top"><a href="docs/screenshots/export-book.png"><img src="docs/screenshots/export-book.png" width="240" alt="Export the current book in NovelWeaver for Android"></a><br><strong>Export the current book</strong><br><sub>Export plain text, Word DOCX, or EPUB ebooks with navigation and covers.</sub></td></tr>
 </table>
 
