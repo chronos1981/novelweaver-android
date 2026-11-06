@@ -1,9 +1,16 @@
-# NovelWeaver for Android 2.1.2
+# NovelWeaver for Android 2.1.3
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
 text-to-speech and Open WebUI requests. It does not load the GitHub Pages website
 to edit your writing and does not need a local web server.
+
+In Write, each paragraph's **Dialogue voice** dropdown includes **Create new
+voice…**, including when no presets exist yet. Name the preset, choose an
+installed voice, adjust speed/pitch and preview it, then select **Create voice**.
+The app saves the preset with the project and applies it to that paragraph's
+dialogue in one save. Narrator settings and manuscript text are retained.
+Cancel keeps the previous selection.
 
 ## Install and start
 

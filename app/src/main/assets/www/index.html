@@ -663,11 +663,17 @@ function speechPresetMenu(){
  listenStop();const profiles=cleanSpeechProfiles(S.project.SpeechProfiles);
  modal('Saved voices',`<p>Save voices once, then select them for later paragraphs or narration/dialogue defaults. Android does not reliably label voice gender: preview a voice and label it Male or Female yourself.</p><div class="option-list">${profiles.map(p=>`<div class="option-row"><span>${h(p.Gender==='male'?'Male':p.Gender==='female'?'Female':'Other')} · ${h(p.Name)}</span><button class="outline-button" data-action="speech-preset-edit" data-id="${h(p.Id)}">Edit</button></div>`).join('')||'<p>No saved voices yet.</p>'}</div><button class="primary-button" data-action="speech-preset-new">+ Save a voice</button>`,[{text:'Close',value:'cancel'}],()=>window.NWTTS?.stop());
 }
-function speechPresetEdit(pid=null,error=''){
- listenStop();const preset=S.project.SpeechProfiles?.find(p=>p.Id===pid)||{Name:'',Gender:'male'};
- modal(pid?'Edit saved voice':'Save a voice',`${error?`<p role="alert">${h(error)}</p>`:''}<label class="form-label" for="speech-preset-name">Preset name</label><input class="text-input" id="speech-preset-name" maxlength="100" placeholder="e.g. Niels or Female narrator" value="${h(preset.Name)}"><label class="form-label" for="speech-gender">Voice label</label><select class="text-input" id="speech-gender"><option value="male" ${preset.Gender==='male'?'selected':''}>Male</option><option value="female" ${preset.Gender==='female'?'selected':''}>Female</option><option value="other" ${preset.Gender==='other'?'selected':''}>Other</option></select>${speechFields(preset,false)}<p class="tiny">Choose an installed voice and preview it. These labels organize your presets; they do not change the speech engine’s voice. Presets are saved with the project.</p>`,[{text:'Cancel',value:'cancel'},{text:'Save voice',value:'save',primary:true}],v=>{
-  window.NWTTS?.stop();if(v!=='save')return;
-  try{const settings=speechReadFields(),name=$('#speech-preset-name').value.trim();if(!name)throw Error('Enter a preset name.');if(!settings.Voice)throw Error('Choose an installed voice to save.');const value={Id:pid||id(),Name:name,Gender:$('#speech-gender').value,...settings};S.project.SpeechProfiles=cleanSpeechProfiles(S.project.SpeechProfiles);const ix=S.project.SpeechProfiles.findIndex(p=>p.Id===value.Id);if(ix>=0)S.project.SpeechProfiles[ix]=value;else S.project.SpeechProfiles.push(value);changed();render();speechPresetMenu()}catch(e){speechPresetEdit(pid,e.message)}
+function speechPresetEdit(pid=null,error='',flow=null,draft=null){
+ listenStop();const preset=draft||S.project.SpeechProfiles?.find(p=>p.Id===pid)||{Name:'',Gender:'male'};
+ modal(pid?'Edit saved voice':flow?'Create dialogue voice':'Save a voice',`${error?`<p role="alert">${h(error)}</p>`:''}<label class="form-label" for="speech-preset-name">Preset name</label><input class="text-input" id="speech-preset-name" maxlength="100" placeholder="e.g. Niels or Female narrator" value="${h(preset.Name)}"><label class="form-label" for="speech-gender">Voice label</label><select class="text-input" id="speech-gender"><option value="male" ${preset.Gender==='male'?'selected':''}>Male</option><option value="female" ${preset.Gender==='female'?'selected':''}>Female</option><option value="other" ${preset.Gender==='other'?'selected':''}>Other</option></select>${speechFields(preset,false)}<p class="tiny">Choose an installed voice and preview it. These labels organize your presets; they do not change the speech engine’s voice. Presets are saved with the project.</p>`,[{text:'Cancel',value:'cancel'},{text:flow?'Create voice':'Save voice',value:'save',primary:true}],v=>{
+  window.NWTTS?.stop();if(v!=='save'){flow?.onCancel?.();return}
+  const draft={Name:$('#speech-preset-name').value,Gender:$('#speech-gender').value,Voice:$('#speech-voice').value,Rate:$('#speech-rate').value,Pitch:$('#speech-pitch').value};
+  try{
+   const settings=speechReadFields(),name=draft.Name.trim();if(!name)throw Error('Enter a preset name.');if(!settings.Voice)throw Error('Choose an installed voice to save.');
+   const value={Id:pid||id(),Name:name,Gender:draft.Gender,...settings},profiles=cleanSpeechProfiles(S.project.SpeechProfiles),ix=profiles.findIndex(p=>p.Id===value.Id);
+   flow?.onSave?.(value);if(ix>=0)profiles[ix]=value;else profiles.push(value);S.project.SpeechProfiles=profiles;
+   changed();render();if(flow)flow.afterSave?.(value);else speechPresetMenu();
+  }catch(e){speechPresetEdit(pid,e.message,flow,draft)}
  });
 }
 function speechPreview(prefix='speech'){
@@ -675,15 +681,19 @@ function speechPreview(prefix='speech'){
 }
 document.addEventListener('change',event=>{if(event.target.id.endsWith('-profile')){const prefix=event.target.id.slice(0,-8);if(['speech','speech-narration','speech-dialogue'].includes(prefix))for(const key of ['voice','rate','pitch'])$('#'+prefix+'-'+key).value='';}});
 
-function speechQuickPicker(p){
- const profiles=cleanSpeechProfiles(S.project.SpeechProfiles),tag=cleanSpeechTag(p.Speech);
+function speechQuickSelection(p){
+ const tag=cleanSpeechTag(p.Speech);
  const settings={...(tag?.Role==='dialogue'?cleanSpeechSettings(tag):{}),...cleanSpeechSettings(tag?.Dialogue)};
- const custom=Object.keys(settings).some(key=>key!=='ProfileId'),selected=custom?'__keep__':settings.ProfileId||'';
+ return Object.keys(settings).some(key=>key!=='ProfileId')?'__keep__':settings.ProfileId||'';
+}
+function speechQuickPicker(p){
+ const profiles=cleanSpeechProfiles(S.project.SpeechProfiles),selected=speechQuickSelection(p),custom=selected==='__keep__';
  const options=`<option value="" ${!selected?'selected':''}>Use dialogue defaults</option>`+
   (custom?'<option value="__keep__" selected>Keep custom voice settings</option>':'')+
   (selected&&selected!=='__keep__'&&!profiles.some(v=>v.Id===selected)?`<option value="${h(selected)}" selected>Unavailable saved voice</option>`:'')+
-  profiles.map(v=>`<option value="${h(v.Id)}" ${v.Id===selected?'selected':''}>${h(v.Name)} · ${v.Gender==='male'?'Male':v.Gender==='female'?'Female':'Other'}</option>`).join('');
- return `<div class="paragraph-quick-voice" role="group" aria-label="Quick dialogue voice"><label><span>Dialogue voice</span><select data-quick-voice="${h(p.Id)}" aria-label="Saved dialogue voice" ${!profiles.length?'disabled':''}>${options}</select></label>${!profiles.length?'<button class="mini-link" data-action="speech-presets">Save a voice…</button>':''}</div>`;
+  profiles.map(v=>`<option value="${h(v.Id)}" ${v.Id===selected?'selected':''}>${h(v.Name)} · ${v.Gender==='male'?'Male':v.Gender==='female'?'Female':'Other'}</option>`).join('')+
+  '<option value="__create_voice__">＋ Create new voice…</option>';
+ return `<div class="paragraph-quick-voice" role="group" aria-label="Quick dialogue voice"><label><span>Dialogue voice</span><select data-quick-voice="${h(p.Id)}" aria-label="Saved dialogue voice">${options}</select></label></div>`;
 }
 function speechQuickTag(previous,profileId,profiles){
  const tag=cleanSpeechTag(previous)||{},profile=profiles.find(p=>p.Id===profileId);
@@ -693,6 +703,19 @@ function speechQuickTag(previous,profileId,profiles){
 }
 function speechQuickChange(pid){
  flushAllEdits();const f=locate(pid),select=$$('[data-quick-voice]').find(el=>el.dataset.quickVoice===pid);if(!f||!select)return;
+ if(select.value==='__create_voice__'){
+  select.value=speechQuickSelection(f.paragraph);
+  const project=S.project,paragraph=f.paragraph,main=document.getElementById('main'),top=main?.scrollTop||0,y=window.scrollY||0;
+  const restore=()=>{if(main)main.scrollTop=top;window.scrollTo(0,y);$$('[data-quick-voice]').find(el=>el.dataset.quickVoice===pid)?.focus({preventScroll:true})};
+  speechPresetEdit(null,'',{
+   onSave(profile){
+    const current=locate(pid);
+    if(S.project!==project||current?.paragraph!==paragraph)throw Error('The original paragraph is no longer available. Cancel and choose its dialogue voice again.');
+    paragraph.Speech=speechQuickTag(paragraph.Speech,profile.Id,[profile]);
+   },
+   afterSave(){restore();toast('Dialogue voice created and applied')},onCancel:restore
+  });return;
+ }
  if(select.value==='__keep__'){toast('Custom voice settings kept');return}
  try{
   const next=speechQuickTag(f.paragraph.Speech,select.value,cleanSpeechProfiles(S.project.SpeechProfiles));

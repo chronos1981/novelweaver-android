@@ -11,6 +11,6 @@ select.value='__keep__';c.api.speechQuickChange('p');assert.equal(saves,1);selec
 select.value='';c.api.speechQuickChange('p');assert.equal(paragraph.Speech.Dialogue.ProfileId,undefined);assert.equal(paragraph.Speech.Narration.Voice,'narrator');
 let tag=c.api.speechQuickTag({Role:'narration',Voice:'legacy-narrator',Pitch:.8},'niels',profiles);assert.equal(tag.Narration.Voice,'legacy-narrator');assert.equal(tag.Narration.Pitch,.8);
 tag=c.api.speechQuickTag({Role:'dialogue',Voice:'legacy-dialogue',Rate:1.8},'niels',profiles);assert.equal(tag.Narration.Voice,undefined);assert.equal(tag.Dialogue.Voice,undefined);
-project.SpeechProfiles=[];assert.match(c.api.speechQuickPicker(paragraph),/disabled/);assert.match(c.api.speechQuickPicker(paragraph),/Save a voice/);
+project.SpeechProfiles=[];assert.doesNotMatch(c.api.speechQuickPicker(paragraph),/disabled/);assert.match(c.api.speechQuickPicker(paragraph),/Create new voice/);
 const bundled=fs.readFileSync(path.join(root,'app/src/main/assets/www/index.html'),'utf8');assert.doesNotMatch(bundled,/speech-quick-apply/);assert.match(bundled,/if\(select\)speechQuickChange/);assert.match(bundled,/innerHTML=speechBadge\(f.paragraph\)/);
 console.log('PASS: quick preset picker, custom/legacy settings, missing preset guard, narrator preservation, reset, no-op save, no history edits and scroll/focus retention.');
