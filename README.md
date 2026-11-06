@@ -1,4 +1,4 @@
-# NovelWeaver for Android 2.3.1
+# NovelWeaver for Android 2.3.2
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
@@ -17,8 +17,11 @@ Use **Spines / Covers** to rotate the books, and swipe a shelf to browse.
 Books without artwork receive a titled cover. Animations respect reduced-motion
 preferences. The library works offline with no additional rendering download.
 
-**Details** shows the selected book’s full back cover. Tap it to zoom and swipe
-the enlarged image. A book without back artwork shows a clear empty state.
+**Details** lifts the selected book out of its shelf, rotates it to the back,
+and enlarges it to fit most of the screen. The library stays visible behind it.
+Tap the back cover to zoom, drag to read, and choose **Return to shelf** or press
+Android Back / Escape to rotate it back into its original position. There is
+no separate cover window. A missing back cover is shown on the book itself.
 In **Manage covers**, add, replace or remove **Front cover**, **Spine image**,
 and **Back cover** separately. Use a tall, narrow image for the spine. All three
 images are saved in the project and preserved by JSON import and backup.

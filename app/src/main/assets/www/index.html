@@ -462,6 +462,9 @@ body.in-bookcase{background:#101b24}.in-bookcase .main-content{padding:0;max-wid
 @media(max-width:600px){.bookcase-library{--book-w:clamp(92px,22.4vw,132px);--book-h:calc(var(--book-w) * 1.6);--book-depth:24px;--bay-height:calc(var(--book-h) + 83px);padding-bottom:170px}.bookcase-heading{padding:12px 13px 15px}.bookcase-heading h1{font-size:31px;margin:0 48px 4px}.bookcase-heading>p{font-size:12px;margin-bottom:12px}.bookcase-heading-top{top:8px;left:3px;right:3px}.bookcase-heading-top button{font-size:10px;padding:5px;min-width:42px}.bookcase-toolbar{gap:12px}.bookcase-toolbar button{padding:8px 15px;font-size:12px;min-height:42px}.bookcase-bay header{top:9px;left:15%;right:15%}.bookcase-bay h2{font-size:18px;padding:6px 17px;border-width:1px}.bookcase-bay h2:before{left:5px}.bookcase-bay h2:after{right:5px}.bookcase-bay h2:before,.bookcase-bay h2:after{font-size:10px}.bookcase-books{gap:18px;padding:19px 12% 9px;bottom:9%}.bookcase-ivy{width:138px;height:405px;top:-95px;left:-17px}.bookcase-fallback{font-size:16px;padding:17px 11px 13px}.bookcase-fallback small{font-size:8px}.bookcase-spine>span{font-size:11px}.bookcase-book.is-selected .bookcase-volume{transform:translateY(-2px) translateZ(26px) rotateY(12deg)}.show-spines .bookcase-book{flex-basis:35px;width:35px}.show-spines .bookcase-book.is-selected{flex-basis:var(--book-w);width:var(--book-w)}.bookcase-vacant-content{gap:17px;inset:24% 16% 12%}.bookcase-vacant-content>p{font-size:12px;max-width:130px}.bookcase-add-volume{font-size:14px;padding:9px;gap:9px}.bookcase-add-volume>span{font-size:28px}.bookcase-selection{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:10px;width:calc(100% - 24px);padding:12px;border-radius:14px}.bookcase-selection-art{width:42px;height:63px}.bookcase-selection-text h2{font-size:17px;-webkit-line-clamp:2;margin:0 0 4px}.bookcase-selection-text p{font-size:11px}.bookcase-selection-actions{gap:6px}.bookcase-selection .primary-button,.bookcase-selection .outline-button{min-height:42px;font-size:12px;padding:8px 10px;border-radius:9px}.bookcase-browse-hint{font-size:11px}.bookcase-back-image{width:100%}}
 @media(max-width:370px){.bookcase-selection{grid-template-columns:36px minmax(0,1fr);gap:7px 10px}.bookcase-selection-art{width:36px;height:56px;grid-row:1/3}.bookcase-selection-actions{grid-column:2}.bookcase-selection-text h2{font-size:16px;-webkit-line-clamp:1}.bookcase-heading h1{font-size:27px}.bookcase-toolbar{gap:9px}.bookcase-toolbar button{padding:8px 12px}.in-bookcase #quill-launcher{bottom:calc(210px + env(safe-area-inset-bottom))}}
 @media(prefers-reduced-motion:reduce){.bookcase-volume,.bookcase-book{transition:none}.bookcase-book:hover .bookcase-volume{transform:rotateY(18deg)}}
+/* A selected book becomes the inspection surface itself, without a dialog. */
+.bookcase-inspection{position:fixed;inset:0;z-index:55;perspective:1300px;isolation:isolate}.bookcase-inspect-shade{position:absolute;inset:0;width:100%;height:100%;border:0;background:#06131cbf;backdrop-filter:blur(4px);opacity:0;transition:opacity .5s}.bookcase-inspection.is-open .bookcase-inspect-shade{opacity:1}.bookcase-inspect-return{position:absolute;top:10px;left:50%;transform:translateX(-50%);min-height:44px;padding:10px 18px;border:1px solid #83bfb7;border-radius:24px;background:#132f37ed;color:#e3f6ec;font:13px var(--font-ui,sans-serif);white-space:nowrap;z-index:3}.bookcase-inspect-hint{position:absolute;bottom:max(16px,env(safe-area-inset-bottom));left:20px;right:20px;margin:0;text-align:center;color:#d3e8e1;font:12px/1.5 var(--font-ui,sans-serif);pointer-events:none;z-index:3}.bookcase-book.bookcase-inspected{--book-w:100%;--book-h:100%;position:fixed;margin:0;min-width:0;max-width:none;padding:0;z-index:2;touch-action:none;cursor:zoom-in;transition:left .55s cubic-bezier(.2,.7,.2,1),top .55s cubic-bezier(.2,.7,.2,1),width .55s cubic-bezier(.2,.7,.2,1),height .55s cubic-bezier(.2,.7,.2,1);perspective:none;outline-offset:6px}.bookcase-inspected .bookcase-volume{width:100%;height:100%;transform-style:preserve-3d;transform-origin:center;transition:transform .55s cubic-bezier(.2,.7,.2,1)}.bookcase-inspected:hover .bookcase-volume{transform:none}.bookcase-inspected .bookcase-cover{box-shadow:5px 12px 25px #0009}.bookcase-inspected .bookcase-cover img{object-fit:fill}.bookcase-book-back{position:absolute;inset:0;display:block;border-radius:4px 3px 3px 4px;transform:rotateY(180deg) translateZ(1px);backface-visibility:hidden;overflow:hidden;background:linear-gradient(140deg,#274a49,#142a30);box-shadow:0 16px 50px #0009;border:1px solid #c5b88a88}.bookcase-book-back>img{display:block;width:100%;height:100%;object-fit:fill;transform-origin:var(--pan-x,50%) var(--pan-y,50%);transition:transform .2s ease;user-select:none;pointer-events:none}.bookcase-book-back.is-zoomed>img{transform:scale(2)}.bookcase-inspect-missing{width:100%;height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:24px;padding:30px;color:#f0e0b6;text-align:center;font:19px/1.5 Georgia,serif;border:6px double #ab946b88}.bookcase-inspect-missing strong{font:28px/1.3 Georgia,serif}.bookcase-inspect-missing small{font:13px/1.6 var(--font-ui,sans-serif);color:#c1d1c8}.bookcase-inspection button:focus-visible{outline:3px solid #79ddc9}.bookcase-inspected:after{display:none}.bookcase-inspect-slot{display:block;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.bookcase-book.bookcase-inspected,.bookcase-inspected .bookcase-volume,.bookcase-inspect-shade,.bookcase-book-back>img{transition:none}}
 
 </style></head>
 <body>
@@ -869,7 +872,7 @@ function removeBookFromLibrary(bookId){
  });
 }
 
-function render(){swapChapter();renderLibrary();$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===S.view||(S.view==='bookcase'&&b.dataset.view==='read')));updateBadges();const host=$('#main-body');document.body.classList.toggle('in-bookcase',S.view==='bookcase');switch(S.view){case 'write':host.innerHTML=renderWrite();$$('.para-text',host).forEach(autosize);break;case 'bookcase':host.innerHTML=renderBookcase();break;case 'read':host.innerHTML=renderRead();if(S.reader.mode==='ebook'){requestAnimationFrame(ebookRefresh);if(S.reader.font==='dyslexic'&&document.fonts){document.fonts.load(S.reader.fontSize+'px \"NovelWeaver OpenDyslexic\"').then(()=>{if(S.view==='read'&&S.reader.mode==='ebook'&&S.reader.font==='dyslexic')ebookRefresh()}).catch(e=>console.warn('OpenDyslexic not available yet',e));}}break;case 'listen':host.innerHTML=renderListen();syncListenUI();break;case 'threads':host.innerHTML=renderThreads();break;case 'reviews':host.innerHTML=renderReviews();break;case 'search':host.innerHTML=renderSearch();break;case 'help':host.innerHTML=renderHelp();break;default:host.innerHTML=renderMore()}}
+function render(){if(bookcase.inspection)bookcaseCloseDetails(true);swapChapter();renderLibrary();$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===S.view||(S.view==='bookcase'&&b.dataset.view==='read')));updateBadges();const host=$('#main-body');document.body.classList.toggle('in-bookcase',S.view==='bookcase');switch(S.view){case 'write':host.innerHTML=renderWrite();$$('.para-text',host).forEach(autosize);break;case 'bookcase':host.innerHTML=renderBookcase();break;case 'read':host.innerHTML=renderRead();if(S.reader.mode==='ebook'){requestAnimationFrame(ebookRefresh);if(S.reader.font==='dyslexic'&&document.fonts){document.fonts.load(S.reader.fontSize+'px \"NovelWeaver OpenDyslexic\"').then(()=>{if(S.view==='read'&&S.reader.mode==='ebook'&&S.reader.font==='dyslexic')ebookRefresh()}).catch(e=>console.warn('OpenDyslexic not available yet',e));}}break;case 'listen':host.innerHTML=renderListen();syncListenUI();break;case 'threads':host.innerHTML=renderThreads();break;case 'reviews':host.innerHTML=renderReviews();break;case 'search':host.innerHTML=renderSearch();break;case 'help':host.innerHTML=renderHelp();break;default:host.innerHTML=renderMore()}}
 function pageTitle(kicker,title,desc,tools=''){return `<div class="page-top"><div><div class="kicker">${h(kicker)}</div><h1>${h(title)}</h1><div class="page-subtitle">${h(desc)}</div></div><div class="page-tools">${tools}</div></div>`}
 // Two read-only manuscript presentations. Plain Text is an exact text snapshot;
 // Ebook is a typeset, paginated chapter built from those same paragraph strings.
@@ -1462,6 +1465,7 @@ async function desktopInitialize() {
   swapChapter(); desktopStatus();
 }
 function desktopConflict(result) {
+  if(typeof bookcaseCloseDetails==='function')bookcaseCloseDetails(true);
   if (!result) return;
   const disk = result.project;
   const date = p => p?.ModifiedAtUtc ? new Date(p.ModifiedAtUtc).toLocaleString() : 'Unknown';
@@ -1689,7 +1693,7 @@ async function bookcaseReadFile(file,seriesOnly=false){
  return bookcaseValidateProject(project);
 }
 
-const bookcase={shelves:[],activeId:'',loading:false,busy:false,error:'',warnings:[],importTarget:'',importTitle:'Imported books',selection:null,spines:false,detailsToken:0};
+const bookcase={shelves:[],activeId:'',loading:false,busy:false,error:'',warnings:[],importTarget:'',importTitle:'Imported books',selection:null,spines:false,detailsToken:0,inspection:null};
 function bookcaseCoverUrl(value){return typeof value==='string'&&/^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)?value:''}
 function bookcaseWorkspaceShelf(){return {id:'__workspace__',title:S.project.Title||'Current series',workspace:true,books:S.project.Books.map(b=>({id:b.Id,title:b.Title,author:b.Author||'',cover:bookcaseCoverUrl(b.FrontCover?.DataUrl),spine:bookcaseCoverUrl(b.SpineCover?.DataUrl)}))}}
 function bookcaseShelves(){
@@ -1730,18 +1734,7 @@ function bookcaseSelect(shelfId,bookId){
  root.querySelectorAll('.bookcase-book').forEach(el=>{const chosen=el.dataset.shelf===shelfId&&el.dataset.book===bookId;el.classList.toggle('is-selected',chosen);el.setAttribute('aria-pressed',String(chosen))});
  const panel=root.querySelector('.bookcase-selection');panel.innerHTML=bookcaseSelectionPanel({shelf,book});
 }
-async function bookcaseDetails(shelfId,bookId){
- if(bookcase.busy)return;const token=++bookcase.detailsToken,projectId=S.project.Id;
- modal('Back cover','<p role="status">Loading back cover…</p>');const dialog=document.querySelector('[role="dialog"]');
- try{
-  const local=shelfId==='__workspace__'||shelfId===bookcase.activeId;
-  const project=local?S.project:(await DesktopHost.call('bookcaseRead',{id:shelfId})).project;
-  if(token!==bookcase.detailsToken||document.querySelector('[role="dialog"]')!==dialog||projectId!==S.project.Id)return;
-  const book=project.Books.find(b=>b.Id===bookId);if(!book)throw Error('This book is no longer on the shelf.');
-  const cover=cleanCover(book.BackCover);
-  modal('Back cover',`<div class="bookcase-back-detail"><h3>${h(book.Title)}</h3>${book.Author?`<p>${h(book.Author)}</p>`:''}${cover?`<button type="button" data-action="bookcase-back-zoom" class="bookcase-back-image" aria-label="Zoom back cover" aria-pressed="false"><img src="${h(cover.DataUrl)}" alt="Back cover of ${h(book.Title)}"></button><p class="item-sub">Tap the cover to zoom; swipe to read the enlarged image.</p>`:'<div class="bookcase-no-back"><span aria-hidden="true">NW</span><p>No back cover has been added for this book.</p><p class="item-sub">Open the book, then use Manage covers to add one.</p></div>'}</div>`);
- }catch(error){if(token===bookcase.detailsToken&&document.querySelector('[role="dialog"]')===dialog)modal('Could not show back cover',`<p role="alert">${h(error.message)}</p>`)}
-}
+async function bookcaseDetails(shelfId,bookId){return bookcaseInspect(shelfId,bookId)}
 async function bookcaseRefresh(){
  bookcase.loading=true;bookcase.error='';if(S.view==='bookcase')render();
  try{const value=await DesktopHost.call('bookcaseList');bookcase.shelves=value.shelves||[];bookcase.activeId=value.activeId||'';bookcase.warnings=value.warnings||[]}
@@ -1806,7 +1799,8 @@ document.addEventListener('click',event=>{
  else if(action==='bookcase-refresh')bookcaseRefresh();
  else if(action==='bookcase-keep')bookcaseKeepCurrent();
  else if(action==='bookcase-select')bookcaseSelect(button.dataset.shelf,button.dataset.book);
- else if(action==='bookcase-back-zoom'){const zoomed=button.classList.toggle('zoomed');button.setAttribute('aria-pressed',String(zoomed));button.setAttribute('aria-label',zoomed?'Reset back cover zoom':'Zoom back cover')}
+ else if(action==='bookcase-inspect-close')bookcaseCloseDetails();
+ else if(action==='bookcase-inspect-zoom')bookcaseZoomDetails();
  else if(action==='bookcase-details')bookcaseDetails(button.dataset.shelf,button.dataset.book);
  else if(action==='bookcase-orientation'){bookcase.spines=!bookcase.spines;const root=document.querySelector('.bookcase-library');root?.classList.toggle('show-spines',bookcase.spines);button.textContent=bookcase.spines?'Covers':'Spines';button.setAttribute('aria-pressed',String(bookcase.spines));button.setAttribute('aria-label',bookcase.spines?'Show front covers':'Show book spines')}
  else if(action==='bookcase-open')bookcaseOpen(button.dataset.shelf,button.dataset.book);
@@ -1817,11 +1811,79 @@ document.addEventListener('click',event=>{
 });
 document.addEventListener('change',event=>{if(event.target.id==='bookcase-series-input')bookcaseImportFiles([...event.target.files],true);if(event.target.id==='bookcase-books-input')bookcaseImportFiles([...event.target.files],false)});
 
+// Move the selected live book into a viewport-sized inspection scene, then
+// return that same element to its reserved shelf slot. No dialog or file open.
+function bookcaseInspectionTarget(state,ratio){
+ const view=window.visualViewport,w=view?.width||innerWidth,ht=view?.height||innerHeight,x=view?.offsetLeft||0,y=view?.offsetTop||0;
+ const maxWidth=Math.max(100,w-28),maxHeight=Math.max(100,ht-116),height=Math.min(maxHeight,maxWidth/ratio),width=height*ratio;
+ state.target={left:x+(w-width)/2,top:y+58+(maxHeight-height)/2,width,height};
+ if(!state.closing)Object.assign(state.book.style,Object.fromEntries(Object.entries(state.target).map(([k,v])=>[k,v+'px'])));
+}
+function bookcaseInspectionBack(state,book,error=''){
+ if(bookcase.inspection!==state||state.closing)return;
+ const cover=cleanCover(book?.BackCover),front=cleanCover(book?.FrontCover),spine=cleanCover(book?.SpineCover);
+ const frontImage=state.book.querySelector('.bookcase-cover img'),spineImage=state.book.querySelector('.bookcase-spine img');
+ if(front&&frontImage)frontImage.src=front.DataUrl;if(spine&&spineImage)spineImage.src=spine.DataUrl;
+ state.cover=!!cover;state.back.innerHTML=cover?`<img src="${h(cover.DataUrl)}" alt="Back cover of ${h(book.Title)}" draggable="false">`:`<span class="bookcase-inspect-missing"><strong>${h(book?.Title||state.title)}</strong><span>${h(error||'No back cover has been added for this book.')}</span><small>${error?'Return to the shelf and try again.':'Add one in Manage covers.'}</small></span>`;
+ state.book.setAttribute('aria-label',cover?'Zoom back cover':'Return book to shelf');state.book.setAttribute('aria-busy','false');
+ state.hint.textContent=cover?'Tap to zoom · Back to return':'Tap the book or Back to return';
+ state.ratio=cover?cover.Width/cover.Height:2/3;bookcaseInspectionTarget(state,state.ratio);
+}
+async function bookcaseInspect(shelfId,bookId){
+ if(bookcase.busy||bookcase.inspection||S.view!=='bookcase')return;
+ const origin=[...document.querySelectorAll('.bookcase-shelf .bookcase-book')].find(el=>el.dataset.shelf===shelfId&&el.dataset.book===bookId);if(!origin)return;
+ const bounds=origin.getBoundingClientRect(),volume=origin.querySelector('.bookcase-volume'),matrix=getComputedStyle(volume).transform,slot=document.createElement('span');
+ slot.className='bookcase-inspect-slot';Object.assign(slot.style,{flex:'0 0 '+bounds.width+'px',width:bounds.width+'px',height:bounds.height+'px'});origin.before(slot);
+ const stage=document.createElement('section');stage.className='bookcase-inspection';stage.setAttribute('aria-label','Inspect back cover');stage.innerHTML='<button type="button" class="bookcase-inspect-shade" data-action="bookcase-inspect-close" aria-label="Return book to shelf" tabindex="-1"></button><button type="button" class="bookcase-inspect-return" data-action="bookcase-inspect-close">← Return to shelf</button><p class="bookcase-inspect-hint" role="status">Loading back cover…</p>';
+ const state={book:origin,volume,slot,stage,back:document.createElement('span'),hint:stage.querySelector('.bookcase-inspect-hint'),title:origin.getAttribute('aria-label').replace(/^Select /,''),focusBefore:document.activeElement,projectId:S.project.Id,token:++bookcase.detailsToken,originalStyle:origin.getAttribute('style'),volumeStyle:volume.getAttribute('style'),action:origin.dataset.action,label:origin.getAttribute('aria-label'),pressed:origin.getAttribute('aria-pressed'),matrix,closing:false,cover:false,ratio:2/3,zoomed:false,panX:50,panY:50,inert:[],scroll:document.body.style.overflow};
+ bookcase.inspection=state;state.back.className='bookcase-book-back';state.back.innerHTML='<span class="bookcase-inspect-missing" role="status">Loading back cover…</span>';volume.append(state.back);
+ origin.classList.add('bookcase-inspected');origin.dataset.action='bookcase-inspect-zoom';origin.setAttribute('aria-label','Loading back cover');origin.setAttribute('aria-busy','true');origin.setAttribute('aria-pressed','false');volume.style.transform=matrix;
+ Object.assign(origin.style,{left:bounds.left+'px',top:bounds.top+'px',width:bounds.width+'px',height:bounds.height+'px'});stage.append(origin);document.body.append(stage);
+ for(const el of document.body.children){if(el!==stage){state.inert.push([el,el.inert]);el.inert=true}}
+ document.body.style.overflow='hidden';stage.querySelector('.bookcase-inspect-return').focus({preventScroll:true});
+ state.resize=()=>bookcaseInspectionTarget(state,state.ratio);window.addEventListener('resize',state.resize);window.visualViewport?.addEventListener('resize',state.resize);
+ origin.addEventListener('pointerdown',state.down=event=>{if(!state.zoomed)return;state.suppressClick=false;state.drag={x:event.clientX,y:event.clientY,panX:state.panX,panY:state.panY};origin.setPointerCapture(event.pointerId)});
+ origin.addEventListener('pointermove',state.move=event=>{if(!state.drag)return;const dx=event.clientX-state.drag.x,dy=event.clientY-state.drag.y;if(Math.abs(dx)+Math.abs(dy)>7)state.suppressClick=true;state.panX=Math.max(0,Math.min(100,state.drag.panX-dx/state.target.width*100));state.panY=Math.max(0,Math.min(100,state.drag.panY-dy/state.target.height*100));state.back.style.setProperty('--pan-x',state.panX+'%');state.back.style.setProperty('--pan-y',state.panY+'%')});
+ origin.addEventListener('pointerup',state.up=()=>{state.drag=null});origin.addEventListener('pointercancel',state.up);
+ // Commit the shelf geometry before the enlargement and rotation begin.
+ origin.getBoundingClientRect();requestAnimationFrame(()=>{if(bookcase.inspection!==state||state.closing)return;bookcaseInspectionTarget(state,state.ratio);volume.style.transform='rotateY(-180deg)';stage.classList.add('is-open')});
+ try{
+  const project=shelfId==='__workspace__'||shelfId===bookcase.activeId?S.project:(await DesktopHost.call('bookcaseRead',{id:shelfId})).project;
+  if(bookcase.inspection!==state||state.closing||state.token!==bookcase.detailsToken||state.projectId!==S.project.Id)return;
+  const book=project.Books.find(b=>b.Id===bookId);if(!book)throw Error('This book is no longer on the shelf.');bookcaseInspectionBack(state,book);
+ }catch(error){if(bookcase.inspection===state&&!state.closing)bookcaseInspectionBack(state,null,error.message)}
+}
+function bookcaseZoomDetails(){
+ const state=bookcase.inspection;if(!state||state.closing)return;
+ if(state.suppressClick){state.suppressClick=false;return}if(!state.cover){bookcaseCloseDetails();return}
+ state.zoomed=!state.zoomed;state.panX=50;state.panY=50;state.back.style.setProperty('--pan-x','50%');state.back.style.setProperty('--pan-y','50%');state.back.classList.toggle('is-zoomed',state.zoomed);state.book.setAttribute('aria-pressed',String(state.zoomed));state.book.setAttribute('aria-label',state.zoomed?'Reset back cover zoom':'Zoom back cover');state.hint.textContent=state.zoomed?'Drag to read · Tap to reset zoom · Back to return':'Tap to zoom · Back to return';
+}
+function bookcaseCloseDetails(immediate=false){
+ const state=bookcase.inspection;if(!state)return false;if(state.closing&&!immediate)return true;
+ state.closing=true;++bookcase.detailsToken;clearTimeout(state.timer);state.stage.classList.remove('is-open');state.back.classList.remove('is-zoomed');state.book.style.pointerEvents='none';state.volume.style.transform=state.matrix;
+ const bounds=state.slot.getBoundingClientRect();Object.assign(state.book.style,{left:bounds.left+'px',top:bounds.top+'px',width:bounds.width+'px',height:bounds.height+'px'});
+ const finish=()=>{
+  clearTimeout(state.timer);window.removeEventListener('resize',state.resize);window.visualViewport?.removeEventListener('resize',state.resize);
+  state.book.removeEventListener('pointerdown',state.down);state.book.removeEventListener('pointermove',state.move);state.book.removeEventListener('pointerup',state.up);state.book.removeEventListener('pointercancel',state.up);
+  state.back.remove();state.book.classList.remove('bookcase-inspected');for(const [el,key,value] of [[state.book,'style',state.originalStyle],[state.volume,'style',state.volumeStyle],[state.book,'aria-label',state.label],[state.book,'aria-pressed',state.pressed]]){if(value===null)el.removeAttribute(key);else el.setAttribute(key,value)}
+  state.book.removeAttribute('aria-busy');state.book.dataset.action=state.action;
+  if(state.slot.isConnected)state.slot.replaceWith(state.book);else state.book.remove();state.stage.remove();for(const [el,inert] of state.inert)el.inert=inert;document.body.style.overflow=state.scroll;
+  if(bookcase.inspection===state)bookcase.inspection=null;if(state.focusBefore?.isConnected)state.focusBefore.focus({preventScroll:true});
+ };
+ if(immediate||matchMedia('(prefers-reduced-motion: reduce)').matches)finish();else state.timer=setTimeout(finish,560);return true;
+}
+document.addEventListener('keydown',event=>{
+ const state=bookcase.inspection;if(!state)return;
+ if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();bookcaseCloseDetails()}
+ else if((event.ctrlKey||event.metaKey)&&['o','s','n'].includes(event.key.toLowerCase())){event.preventDefault();event.stopImmediatePropagation()}
+ else if(event.key==='Tab'){const items=[state.stage.querySelector('.bookcase-inspect-return'),state.book];event.preventDefault();items[(items.indexOf(document.activeElement)+(event.shiftKey?-1:1)+items.length)%items.length].focus()}
+},true);
+
 window.NWDesktop = {command:desktopCommand};
 window.addEventListener('nw-file-status',event=>desktopHandleResult(event.detail));
 window.NWAndroid={
   pause(){if(desktop.starting)return;flushAllEdits();saveLocal()},
-  back(){if($('#modal-host .modal')){const fn=modalResolve;closeModal();fn?.('cancel')}else if(quill.open)quillClose();else if(S.sidebarOpen)closeSidebar();else desktopCommand('close')}
+  back(){if(bookcaseCloseDetails())return;if($('#modal-host .modal')){const fn=modalResolve;closeModal();fn?.('cancel')}else if(quill.open)quillClose();else if(S.sidebarOpen)closeSidebar();else desktopCommand('close')}
 };
 document.addEventListener('keydown', event => {
   if (!(event.ctrlKey || event.metaKey)) return;
