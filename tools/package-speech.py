@@ -60,4 +60,5 @@ replace("if(!b)return pageTitle('READ ONLY','No book selected','Select a book to
 
 a=s.index('function epubPage(');b=s.index('function buildBookEpub(',a)
 s=s[:a]+'''function epubPage(title,body){return `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><meta charset="utf-8"/><title>${xmlEscape(title)}</title><link rel="stylesheet" type="text/css" href="style.css"/></head><body>${body}</body></html>`}\n'''+s[b:]
+s=s.replace('</head>','<style>\n'+(root/'tools/reader-fullscreen.css').read_text()+'\n</style></head>',1)
 p.write_text(s)
