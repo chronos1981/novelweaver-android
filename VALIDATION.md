@@ -1,5 +1,23 @@
 # Completed validation
 
+Version 2.3.2 changes Details into an in-scene book inspection. The original
+selected DOM book moves from its reserved shelf slot, enlarges to viewport-fit
+geometry and turns 180 degrees to show the full back cover. Return animates the
+same book back and restores its action, styles, focus and shelf position.
+Background controls are inert during inspection. Android Back, Escape, the
+return button and tapping outside return the book. Tap zoom supports dragging
+the enlarged image within the back face. Missing artwork and read errors appear
+on that face. Closed/view-replaced inspections ignore late native responses.
+Reduced-motion settings remove transitions. Native save-conflict prompts first
+return the inspection so their controls remain accessible.
+
+Validation: 13 JavaScript test files and the complete Chromium UI flow, including
+same-element identity, no cover dialog, viewport-fit enlargement, full image,
+zoom/pan, native Back, Escape, focus/shelf cleanup, missing artwork, late replies,
+reduced motion, and all prior imports/cover operations. The back-cover capture
+shows the actual bundled UI. All 80 native tests, Android assembly and lint pass. Physical-device touch
+verification remains manual.
+
 Version 2.3.1 corrects the difference between the library concept and the
 previous implementation. The actual scene now uses locally bundled shelf and
 ivy artwork, with carved walnut detail, integrated lighting and brass decor;

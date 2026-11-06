@@ -19,3 +19,6 @@ were updated from the bundled 2.3.0 UI with demonstration books and artwork.
 The library captures now use the bundled 2.3.1 shelf and ivy artwork.
 bookcase-single-series.png shows the reported one-series case with three books
 and two vacant import bays. These are captures of the working bundled UI.
+
+Version 2.3.2 updates the back-cover capture to show the live book rotated and
+enlarged within the library, with no separate dialog.

@@ -1,4 +1,4 @@
-const bookcase={shelves:[],activeId:'',loading:false,busy:false,error:'',warnings:[],importTarget:'',importTitle:'Imported books',selection:null,spines:false,detailsToken:0};
+const bookcase={shelves:[],activeId:'',loading:false,busy:false,error:'',warnings:[],importTarget:'',importTitle:'Imported books',selection:null,spines:false,detailsToken:0,inspection:null};
 function bookcaseCoverUrl(value){return typeof value==='string'&&/^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)?value:''}
 function bookcaseWorkspaceShelf(){return {id:'__workspace__',title:S.project.Title||'Current series',workspace:true,books:S.project.Books.map(b=>({id:b.Id,title:b.Title,author:b.Author||'',cover:bookcaseCoverUrl(b.FrontCover?.DataUrl),spine:bookcaseCoverUrl(b.SpineCover?.DataUrl)}))}}
 function bookcaseShelves(){
@@ -39,18 +39,7 @@ function bookcaseSelect(shelfId,bookId){
  root.querySelectorAll('.bookcase-book').forEach(el=>{const chosen=el.dataset.shelf===shelfId&&el.dataset.book===bookId;el.classList.toggle('is-selected',chosen);el.setAttribute('aria-pressed',String(chosen))});
  const panel=root.querySelector('.bookcase-selection');panel.innerHTML=bookcaseSelectionPanel({shelf,book});
 }
-async function bookcaseDetails(shelfId,bookId){
- if(bookcase.busy)return;const token=++bookcase.detailsToken,projectId=S.project.Id;
- modal('Back cover','<p role="status">Loading back cover…</p>');const dialog=document.querySelector('[role="dialog"]');
- try{
-  const local=shelfId==='__workspace__'||shelfId===bookcase.activeId;
-  const project=local?S.project:(await DesktopHost.call('bookcaseRead',{id:shelfId})).project;
-  if(token!==bookcase.detailsToken||document.querySelector('[role="dialog"]')!==dialog||projectId!==S.project.Id)return;
-  const book=project.Books.find(b=>b.Id===bookId);if(!book)throw Error('This book is no longer on the shelf.');
-  const cover=cleanCover(book.BackCover);
-  modal('Back cover',`<div class="bookcase-back-detail"><h3>${h(book.Title)}</h3>${book.Author?`<p>${h(book.Author)}</p>`:''}${cover?`<button type="button" data-action="bookcase-back-zoom" class="bookcase-back-image" aria-label="Zoom back cover" aria-pressed="false"><img src="${h(cover.DataUrl)}" alt="Back cover of ${h(book.Title)}"></button><p class="item-sub">Tap the cover to zoom; swipe to read the enlarged image.</p>`:'<div class="bookcase-no-back"><span aria-hidden="true">NW</span><p>No back cover has been added for this book.</p><p class="item-sub">Open the book, then use Manage covers to add one.</p></div>'}</div>`);
- }catch(error){if(token===bookcase.detailsToken&&document.querySelector('[role="dialog"]')===dialog)modal('Could not show back cover',`<p role="alert">${h(error.message)}</p>`)}
-}
+async function bookcaseDetails(shelfId,bookId){return bookcaseInspect(shelfId,bookId)}
 async function bookcaseRefresh(){
  bookcase.loading=true;bookcase.error='';if(S.view==='bookcase')render();
  try{const value=await DesktopHost.call('bookcaseList');bookcase.shelves=value.shelves||[];bookcase.activeId=value.activeId||'';bookcase.warnings=value.warnings||[]}
@@ -115,7 +104,8 @@ document.addEventListener('click',event=>{
  else if(action==='bookcase-refresh')bookcaseRefresh();
  else if(action==='bookcase-keep')bookcaseKeepCurrent();
  else if(action==='bookcase-select')bookcaseSelect(button.dataset.shelf,button.dataset.book);
- else if(action==='bookcase-back-zoom'){const zoomed=button.classList.toggle('zoomed');button.setAttribute('aria-pressed',String(zoomed));button.setAttribute('aria-label',zoomed?'Reset back cover zoom':'Zoom back cover')}
+ else if(action==='bookcase-inspect-close')bookcaseCloseDetails();
+ else if(action==='bookcase-inspect-zoom')bookcaseZoomDetails();
  else if(action==='bookcase-details')bookcaseDetails(button.dataset.shelf,button.dataset.book);
  else if(action==='bookcase-orientation'){bookcase.spines=!bookcase.spines;const root=document.querySelector('.bookcase-library');root?.classList.toggle('show-spines',bookcase.spines);button.textContent=bookcase.spines?'Covers':'Spines';button.setAttribute('aria-pressed',String(bookcase.spines));button.setAttribute('aria-label',bookcase.spines?'Show front covers':'Show book spines')}
  else if(action==='bookcase-open')bookcaseOpen(button.dataset.shelf,button.dataset.book);

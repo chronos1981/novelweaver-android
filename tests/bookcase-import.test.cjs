@@ -27,7 +27,7 @@ function array(bytes){return bytes.buffer.slice(bytes.byteOffset,bytes.byteOffse
  await assert.rejects(c.api.bookcaseZip(array(zip([{name:'wrong-size',text:'longer',claimed:1}]))).read('wrong-size'),/size/);
  await assert.rejects(c.api.bookcaseZip(array(zip([{name:'bomb',text:'x'.repeat(20_000_001),method:8,claimed:1}]))).read('bomb'),/limit/);
  assert.throws(()=>c.api.bookcaseZip(new ArrayBuffer(2)),/not a standard/);
- for(const name of ['bookcase-import.js','bookcase.js'])assert(html.includes(fs.readFileSync(path.join(root,'tools',name),'utf8')),name+' must match the bundled UI');
+ for(const name of ['bookcase-import.js','bookcase.js','bookcase-inspect.js'])assert(html.includes(fs.readFileSync(path.join(root,'tools',name),'utf8')),name+' must match the bundled UI');
  assert.match(html,/go-write[^>]*>✎ Edit chapter<\/button><button[^>]*bookcase-show/);
  assert.match(html,/bookcase-series-input[^>]*multiple/);assert.match(html,/bookcase-books-input[^>]*multiple/);
  console.log('PASS: stored/deflated EPUB archives, CRC and size checks, archive limits, encrypted resources, traversal/remote URL rejection, packaged modules, Read button placement and multi-file inputs.');

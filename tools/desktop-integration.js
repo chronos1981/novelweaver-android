@@ -37,6 +37,7 @@ async function desktopInitialize() {
   swapChapter(); desktopStatus();
 }
 function desktopConflict(result) {
+  if(typeof bookcaseCloseDetails==='function')bookcaseCloseDetails(true);
   if (!result) return;
   const disk = result.project;
   const date = p => p?.ModifiedAtUtc ? new Date(p.ModifiedAtUtc).toLocaleString() : 'Unknown';
@@ -134,7 +135,7 @@ window.NWDesktop = {command:desktopCommand};
 window.addEventListener('nw-file-status',event=>desktopHandleResult(event.detail));
 window.NWAndroid={
   pause(){if(desktop.starting)return;flushAllEdits();saveLocal()},
-  back(){if($('#modal-host .modal')){const fn=modalResolve;closeModal();fn?.('cancel')}else if(quill.open)quillClose();else if(S.sidebarOpen)closeSidebar();else desktopCommand('close')}
+  back(){if(bookcaseCloseDetails())return;if($('#modal-host .modal')){const fn=modalResolve;closeModal();fn?.('cancel')}else if(quill.open)quillClose();else if(S.sidebarOpen)closeSidebar();else desktopCommand('close')}
 };
 document.addEventListener('keydown', event => {
   if (!(event.ctrlKey || event.metaKey)) return;

@@ -43,13 +43,14 @@ replace("['FrontCover','BackCover'].includes(side)", "['FrontCover','BackCover',
 replace("modal('Book covers',", "modal('Manage covers',")
 replace('<section class="cover-card"><h3>${label}', '<section class="cover-card ${side===\'SpineCover\'?\'spine-cover-card\':\'\'}"><h3>${label}')
 replace('EPUB and Word include both covers; TXT contains text only.', 'Front and back covers are included in EPUB and Word exports. Spine images are used in the 3D library and kept in project backups; TXT contains text only.')
+replace('function render(){', 'function render(){if(bookcase.inspection)bookcaseCloseDetails(true);')
 replace("const host=$('#main-body');switch(S.view)", "const host=$('#main-body');document.body.classList.toggle('in-bookcase',S.view==='bookcase');switch(S.view)")
 
 # The bookcase is an independent persistent collection of series copies.
 replace('<button class="outline-button" data-action="go-write">✎ Edit chapter</button>', '<button class="outline-button" data-action="go-write">✎ Edit chapter</button><button class="outline-button" data-action="bookcase-show">▤ Bookcase</button>')
 replace("case 'read':host.innerHTML=renderRead();", "case 'bookcase':host.innerHTML=renderBookcase();break;case 'read':host.innerHTML=renderRead();")
 replace("b.dataset.view===S.view", "b.dataset.view===S.view||(S.view==='bookcase'&&b.dataset.view==='read')")
-replace("window.NWDesktop = {command:desktopCommand};", (root/'tools/bookcase-import.js').read_text()+'\n'+(root/'tools/bookcase.js').read_text()+"\nwindow.NWDesktop = {command:desktopCommand};")
+replace("window.NWDesktop = {command:desktopCommand};", (root/'tools/bookcase-import.js').read_text()+'\n'+(root/'tools/bookcase.js').read_text()+'\n'+(root/'tools/bookcase-inspect.js').read_text()+"\nwindow.NWDesktop = {command:desktopCommand};")
 replace('</head>', '<style>\n'+(root/'tools/bookcase.css').read_text()+'\n</style></head>')
 replace('<div id="modal-host">', '<input type="file" id="bookcase-series-input" hidden multiple accept=".json,.novel.json,application/json"><input type="file" id="bookcase-books-input" hidden multiple accept=".epub,.docx,.txt,.json,.novel.json,application/epub+zip,application/json,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"><div id="modal-host">')
 
