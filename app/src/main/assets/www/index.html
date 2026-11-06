@@ -872,7 +872,7 @@ function removeBookFromLibrary(bookId){
  });
 }
 
-function render(){if(bookcase.inspection)bookcaseCloseDetails(true);swapChapter();renderLibrary();$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===S.view||(S.view==='bookcase'&&b.dataset.view==='read')));updateBadges();const host=$('#main-body');document.body.classList.toggle('in-bookcase',S.view==='bookcase');switch(S.view){case 'write':host.innerHTML=renderWrite();$$('.para-text',host).forEach(autosize);break;case 'bookcase':host.innerHTML=renderBookcase();break;case 'read':host.innerHTML=renderRead();if(S.reader.mode==='ebook'){requestAnimationFrame(ebookRefresh);if(S.reader.font==='dyslexic'&&document.fonts){document.fonts.load(S.reader.fontSize+'px \"NovelWeaver OpenDyslexic\"').then(()=>{if(S.view==='read'&&S.reader.mode==='ebook'&&S.reader.font==='dyslexic')ebookRefresh()}).catch(e=>console.warn('OpenDyslexic not available yet',e));}}break;case 'listen':host.innerHTML=renderListen();syncListenUI();break;case 'threads':host.innerHTML=renderThreads();break;case 'reviews':host.innerHTML=renderReviews();break;case 'search':host.innerHTML=renderSearch();break;case 'help':host.innerHTML=renderHelp();break;default:host.innerHTML=renderMore()}}
+function render(){if(bookcase.readerReturn&&(S.view!=='read'||S.project.Id!==bookcase.readerReturn.projectId))bookcase.readerReturn=null;if(bookcase.inspection)bookcaseCloseDetails(true);swapChapter();renderLibrary();$$('[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===S.view||(S.view==='bookcase'&&b.dataset.view==='read')));updateBadges();const host=$('#main-body');document.body.classList.toggle('in-bookcase',S.view==='bookcase');switch(S.view){case 'write':host.innerHTML=renderWrite();$$('.para-text',host).forEach(autosize);break;case 'bookcase':host.innerHTML=renderBookcase();break;case 'read':host.innerHTML=renderRead();if(S.reader.mode==='ebook'){requestAnimationFrame(ebookRefresh);if(S.reader.font==='dyslexic'&&document.fonts){document.fonts.load(S.reader.fontSize+'px \"NovelWeaver OpenDyslexic\"').then(()=>{if(S.view==='read'&&S.reader.mode==='ebook'&&S.reader.font==='dyslexic')ebookRefresh()}).catch(e=>console.warn('OpenDyslexic not available yet',e));}}break;case 'listen':host.innerHTML=renderListen();syncListenUI();break;case 'threads':host.innerHTML=renderThreads();break;case 'reviews':host.innerHTML=renderReviews();break;case 'search':host.innerHTML=renderSearch();break;case 'help':host.innerHTML=renderHelp();break;default:host.innerHTML=renderMore()}}
 function pageTitle(kicker,title,desc,tools=''){return `<div class="page-top"><div><div class="kicker">${h(kicker)}</div><h1>${h(title)}</h1><div class="page-subtitle">${h(desc)}</div></div><div class="page-tools">${tools}</div></div>`}
 // Two read-only manuscript presentations. Plain Text is an exact text snapshot;
 // Ebook is a typeset, paginated chapter built from those same paragraph strings.
@@ -965,6 +965,7 @@ function ebookClearFullscreen(){
  if(!document.documentElement.classList.contains('ebook-reading-active'))return;
  document.documentElement.classList.remove('ebook-reading-active','ebook-fallback-active');
  const layout=$('#ebook-layout');if(layout)layout.classList.remove('ebook-immersive','ebook-fullscreen-fallback');
+ if(bookcase.readerReturn){bookcaseReturnFromReader();return}
  if(S.view==='read'&&S.reader.mode==='ebook')render();
 }
 async function ebookExitFullscreen(){
@@ -1693,7 +1694,7 @@ async function bookcaseReadFile(file,seriesOnly=false){
  return bookcaseValidateProject(project);
 }
 
-const bookcase={shelves:[],activeId:'',loading:false,busy:false,error:'',warnings:[],importTarget:'',importTitle:'Imported books',selection:null,spines:false,detailsToken:0,inspection:null};
+const bookcase={shelves:[],activeId:'',loading:false,busy:false,error:'',warnings:[],importTarget:'',importTitle:'Imported books',selection:null,spines:false,detailsToken:0,inspection:null,readerReturn:null};
 function bookcaseCoverUrl(value){return typeof value==='string'&&/^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)?value:''}
 function bookcaseWorkspaceShelf(){return {id:'__workspace__',title:S.project.Title||'Current series',workspace:true,books:S.project.Books.map(b=>({id:b.Id,title:b.Title,author:b.Author||'',cover:bookcaseCoverUrl(b.FrontCover?.DataUrl),spine:bookcaseCoverUrl(b.SpineCover?.DataUrl)}))}}
 function bookcaseShelves(){
@@ -1743,8 +1744,28 @@ async function bookcaseRefresh(){
 }
 async function bookcaseShow(){flushAllEdits();await saveLocal();S.view='bookcase';closeSidebar();render();await bookcaseRefresh()}
 function bookcaseIsEmptyWorkspace(){return S.project.Title==='Untitled Series'&&S.project.Books.length<=1&&S.project.Books.every(b=>b.Title==='Book One'&&!b.Author&&!b.FrontCover&&!b.BackCover&&!b.SpineCover)&&!S.project.Threads.length&&!S.project.History.length&&!S.project.Reviews.length&&!S.project.SpeechProfiles?.length&&S.project.Chapters.every(c=>c.Title==='Chapter 1'&&c.Paragraphs.every(p=>!p.Text.trim()&&!p.Speech))}
+// A bookcase reading trip is UI state; it never goes into the project file.
+function bookcaseCaptureReadingReturn(shelfId,bookId){
+ return {shelfId,bookId,y:window.scrollY||0,main:document.getElementById('main')?.scrollTop||0,shelves:[...document.querySelectorAll('.bookcase-shelf .bookcase-books')].map(el=>({id:el.querySelector('.bookcase-book')?.dataset.shelf,left:el.scrollLeft}))};
+}
+function bookcaseReturnFromReader(){
+ const trip=bookcase.readerReturn;if(!trip)return false;bookcase.readerReturn=null;
+ bookcase.selection={shelf:trip.shelfId,book:trip.bookId};S.view='bookcase';render();
+ requestAnimationFrame(()=>{
+  if(S.view!=='bookcase')return;
+  for(const el of document.querySelectorAll('.bookcase-shelf .bookcase-books')){const saved=trip.shelves.find(s=>s.id===el.querySelector('.bookcase-book')?.dataset.shelf);if(saved)el.scrollLeft=saved.left}
+  const main=document.getElementById('main');if(main)main.scrollTop=trip.main;window.scrollTo(0,trip.y);
+  document.querySelector('.bookcase-shelf .bookcase-book.is-selected')?.focus({preventScroll:true});
+ });return true;
+}
+function bookcaseReaderBack(){
+ if(!bookcase.readerReturn)return false;
+ // The native fullscreenchange event and the explicit exit may race. Clearing
+ // the trip before rendering makes returning idempotent in both cases.
+ ebookExitFullscreen().then(()=>{if(bookcase.readerReturn)bookcaseReturnFromReader()}).catch(()=>bookcaseReturnFromReader());return true;
+}
 async function bookcaseOpen(shelfId,bookId){
- if(bookcase.busy||desktop.busy)return;bookcase.busy=true;desktop.busy=true;
+ if(bookcase.busy||desktop.busy)return;const readingReturn=bookcaseCaptureReadingReturn(shelfId,bookId);let readingStarted=false;bookcase.busy=true;desktop.busy=true;
  try{
   if(shelfId!=='__workspace__'&&shelfId!==bookcase.activeId){
    if(!bookcaseIsEmptyWorkspace()&&!await desktopConfirmLeave())return;
@@ -1753,9 +1774,9 @@ async function bookcaseOpen(shelfId,bookId){
    if(!desktopHandleResult(result))return;desktopAdopt(result.project);bookcase.activeId=result.bookcaseId||shelfId;
   }
   const book=S.project.Books.find(b=>b.Id===bookId)||S.project.Books[0];if(!book)throw Error('This shelf has no books.');
-  listenStop();S.bookId=book.Id;S.chapterId=S.project.Chapters.find(c=>c.BookId===book.Id)?.Id||null;S.readChapterId=null;S.reader.page=0;S.view='read';render();await saveLocal();
+  listenStop();S.bookId=book.Id;S.chapterId=S.project.Chapters.find(c=>c.BookId===book.Id)?.Id||null;S.readChapterId=null;S.reader.page=0;S.reader.mode='ebook';bookcase.readerReturn={...readingReturn,bookId:book.Id,projectId:S.project.Id};readingStarted=true;bookcase.busy=false;desktop.busy=false;S.view='read';readerSave();render();await saveLocal();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));if(S.view==='read'&&bookcase.readerReturn)await ebookEnterFullscreen();
  }catch(error){modal('Could not open book',`<p role="alert">${h(error.message)}</p>`)}
- finally{bookcase.busy=false;desktop.busy=false;if(S.view==='bookcase')render()}
+ finally{bookcase.busy=false;desktop.busy=false;if(S.view==='bookcase'&&!readingStarted)render()}
 }
 async function bookcaseCheckpoint(){flushAllEdits();await saveLocal();if(desktop.blocked)throw Error('Resolve the current project file conflict before importing books.');if(desktop.path&&!await desktopSave())throw Error('Save the current project before importing books.')}
 async function bookcaseKeepCurrent(){
@@ -1883,7 +1904,8 @@ window.NWDesktop = {command:desktopCommand};
 window.addEventListener('nw-file-status',event=>desktopHandleResult(event.detail));
 window.NWAndroid={
   pause(){if(desktop.starting)return;flushAllEdits();saveLocal()},
-  back(){if(bookcaseCloseDetails())return;if($('#modal-host .modal')){const fn=modalResolve;closeModal();fn?.('cancel')}else if(quill.open)quillClose();else if(S.sidebarOpen)closeSidebar();else desktopCommand('close')}
+  fullscreenBack(){if(bookcaseReaderBack())return;ebookExitFullscreen()},
+  back(){if(bookcaseCloseDetails())return;if($('#modal-host .modal')){const fn=modalResolve;closeModal();fn?.('cancel')}else if(bookcaseReaderBack())return;else if(document.documentElement.classList.contains('ebook-reading-active')){ebookExitFullscreen();return}else if(quill.open)quillClose();else if(S.sidebarOpen)closeSidebar();else desktopCommand('close')}
 };
 document.addEventListener('keydown', event => {
   if (!(event.ctrlKey || event.metaKey)) return;

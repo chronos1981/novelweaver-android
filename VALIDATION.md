@@ -1,5 +1,22 @@
 # Completed validation
 
+Version 2.3.3 makes Bookcase → Open book select ebook mode and enter the
+fullscreen reader automatically. A UI-only return trip retains the selected
+book and shelf/window scroll offsets. Exiting via the reader button, browser
+fullscreen exit, Android's native fullscreen Back callback, or fallback Back
+returns directly to the Bookcase. Reading bookmarks are retained. Fullscreen
+entered independently from Read still returns to Read. Cancelled project
+switching never arms a reading trip. The trip is cleared on unrelated navigation
+or a different project, and return is idempotent for overlapping native and
+browser fullscreen callbacks.
+
+Validation: all 13 JavaScript test files, the complete bundled-UI browser flow,
+real fullscreen plus forced fallback, reader exit, native callback, bookmark
+resume, selected-book and horizontal-scroll restoration, unchanged manuscript,
+and independent Read fullscreen behavior. Android tests (80), assembly and lint
+pass. Phone ebook capture was visually inspected. Physical-device verification
+of native system-bar/fullscreen behavior remains manual.
+
 Version 2.3.2 changes Details into an in-scene book inspection. The original
 selected DOM book moves from its reserved shelf slot, enlarges to viewport-fit
 geometry and turns 180 degrees to show the full back cover. Return animates the

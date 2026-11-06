@@ -299,7 +299,7 @@ public final class MainActivity extends Activity {
         handleBack();
     }
     private void handleBack(){
-        if(fullscreen!=null){exitFullscreen();return;}
+        if(fullscreen!=null){exitFullscreen();if(initialized)web.evaluateJavascript("window.NWAndroid&&window.NWAndroid.fullscreenBack()",null);return;}
         if(initialized)web.evaluateJavascript("window.NWAndroid&&window.NWAndroid.back()",null);else super.onBackPressed();
     }
     @Override protected void onPause(){
