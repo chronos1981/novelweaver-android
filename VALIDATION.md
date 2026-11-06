@@ -1,5 +1,19 @@
 # Completed validation
 
+Version 2.3.5 targets the remaining blank band above the fullscreen running
+header. MainActivity already pads its root for status bars and the display
+cutout, while WebView can expose that same top inset through CSS env(). The
+Android document is now marked as having native-managed window insets, and
+only its fullscreen reader omits the repeated CSS top inset. Non-Android
+fullscreen styling still respects safe-area padding.
+
+The bundled UI check now injects a nonzero 54px safe-area value: removing the
+native-inset marker reproduces 57px of top padding; restoring it leaves 3px,
+and the running header starts 3px below the reader edge. The complete native
+fullscreen/fallback, reader return and Bookcase flow passes under that simulated
+inset. The phone capture was visually inspected. Android unit tests, assembly
+and lint pass. Actual device cutout reporting remains to be verified on phone.
+
 Version 2.3.4 compacts the fullscreen running header in both native and fallback
 modes: 9px book title, a 32px exit control, smaller header gaps and top padding,
 and less space around the chapter heading. Manuscript font settings and regular

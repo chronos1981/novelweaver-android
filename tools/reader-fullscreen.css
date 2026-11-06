@@ -5,3 +5,7 @@
 .ebook-layout.ebook-immersive .ebook-exit-button{min-height:32px;padding:5px 8px;border-radius:7px;font-size:11px}
 .ebook-layout.ebook-immersive .ebook-viewport{margin-top:6px}
 .ebook-layout.ebook-immersive .ebook-column-flow .ebook-chapter-title{margin:.5em .2em .75em}
+
+/* MainActivity already applies status-bar/cutout insets to its root view.
+   WebView can still report that same inset through env(); do not add it twice. */
+html[data-android-window-insets] .ebook-layout.ebook-immersive{padding-top:3px}

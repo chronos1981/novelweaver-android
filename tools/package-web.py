@@ -10,6 +10,8 @@ def replace(old,new):
  if old not in s: raise SystemExit('Android integration point changed: '+old[:90])
  s=s.replace(old,new)
 
+# This document is displayed inside MainActivity's inset-padded native root.
+replace('<html lang="en">', '<html lang="en" data-android-window-insets>')
 replace('<head>', '<head>\n<meta http-equiv="Content-Security-Policy" content="default-src \'self\' data: blob:; script-src \'self\' \'unsafe-inline\'; style-src \'self\' \'unsafe-inline\'; font-src \'self\'; img-src \'self\' data: blob:; connect-src \'none\'; frame-src \'none\'; object-src \'none\'; base-uri \'none\'">')
 replace('</head>', '<style>.save-status{max-width:28vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}</style></head>')
 replace('</head>', '<style>.chapter-navigation{display:flex;gap:8px;flex-basis:100%;width:100%}.chapter-navigation button{flex:1;min-width:0}.chapter-navigation button:disabled{opacity:.45;cursor:default}</style></head>')
