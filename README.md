@@ -1,4 +1,4 @@
-# NovelWeaver for Android 2.3.4
+# NovelWeaver for Android 2.3.5
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
