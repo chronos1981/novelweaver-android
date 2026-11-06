@@ -1,9 +1,93 @@
-# NovelWeaver for Android 2.1.0
+# NovelWeaver for Android
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
 text-to-speech and Open WebUI requests. It does not load the GitHub Pages website
 to edit your writing and does not need a local web server.
+
+## Screenshots
+
+The gallery covers the Android app’s main features. These are captures of the [2.1.3 bundled editor](https://github.com/chronos1981/novelweaver-android/pull/2), rendered at a phone-sized **430 × 1000** viewport with demonstration manuscripts, covers, and voice names. Native Android status bars and document-picker dialogs are not included. Click any image to open it at full size.
+
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/write.png"><img src="docs/screenshots/write.png" width="240" alt="Writing editor in NovelWeaver for Android"></a><br><strong>Writing editor</strong><br><sub>Edit paragraphs, choose dialogue presets, and track edit counts.</sub></td><td align="center" valign="top"><a href="docs/screenshots/listen.png"><img src="docs/screenshots/listen.png" width="240" alt="Listen and voice filters in NovelWeaver for Android"></a><br><strong>Listen and voice filters</strong><br><sub>Choose chapter/book range, language, local or online voices, speed, and playback controls.</sub></td></tr>
+</table>
+
+<details>
+<summary><strong>Writing and your library</strong> — 6 screenshots</summary>
+
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/library.png"><img src="docs/screenshots/library.png" width="240" alt="Books and chapters in NovelWeaver for Android"></a><br><strong>Books and chapters</strong><br><sub>Organize a series, collapse chapter lists, and add or import books.</sub></td><td align="center" valign="top"><a href="docs/screenshots/write.png"><img src="docs/screenshots/write.png" width="240" alt="Writing editor in NovelWeaver for Android"></a><br><strong>Writing editor</strong><br><sub>Edit paragraphs, choose dialogue presets, and track edit counts.</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/paragraph-actions.png"><img src="docs/screenshots/paragraph-actions.png" width="240" alt="Paragraph actions in NovelWeaver for Android"></a><br><strong>Paragraph actions</strong><br><sub>Split, move, merge, link, listen to, and manage paragraphs.</sub></td><td align="center" valign="top"><a href="docs/screenshots/references-history.png"><img src="docs/screenshots/references-history.png" width="240" alt="References and revision history in NovelWeaver for Android"></a><br><strong>References and revision history</strong><br><sub>Follow linked passages and review or restore earlier paragraph text.</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/project-settings.png"><img src="docs/screenshots/project-settings.png" width="240" alt="Project structure in NovelWeaver for Android"></a><br><strong>Project structure</strong><br><sub>Rename your series, books, and chapters; manage the project.</sub></td><td align="center" valign="top"><a href="docs/screenshots/dictionary.png"><img src="docs/screenshots/dictionary.png" width="240" alt="Custom spelling dictionary in NovelWeaver for Android"></a><br><strong>Custom spelling dictionary</strong><br><sub>Add and manage names or terms that proofreading should accept.</sub></td></tr>
+</table>
+
+</details>
+
+<details>
+<summary><strong>Reading</strong> — 3 screenshots</summary>
+
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/read-plain.png"><img src="docs/screenshots/read-plain.png" width="240" alt="Plain-text reader in NovelWeaver for Android"></a><br><strong>Plain-text reader</strong><br><sub>Read a chapter or a whole book without editing the manuscript.</sub></td><td align="center" valign="top"><a href="docs/screenshots/read-ebook.png"><img src="docs/screenshots/read-ebook.png" width="240" alt="Ebook layout in NovelWeaver for Android"></a><br><strong>Ebook layout</strong><br><sub>Choose paper, sepia, or night themes and reading fonts, including OpenDyslexic.</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/read-fullscreen.png"><img src="docs/screenshots/read-fullscreen.png" width="240" alt="Fullscreen reading in NovelWeaver for Android"></a><br><strong>Fullscreen reading</strong><br><sub>Use paginated book-style reading with page controls and saved reading position.</sub></td></tr>
+</table>
+
+</details>
+
+<details>
+<summary><strong>Narration and voice controls</strong> — 9 screenshots</summary>
+
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/listen.png"><img src="docs/screenshots/listen.png" width="240" alt="Listen and voice filters in NovelWeaver for Android"></a><br><strong>Listen and voice filters</strong><br><sub>Choose chapter/book range, language, local or online voices, speed, and playback controls.</sub></td><td align="center" valign="top"><a href="docs/screenshots/voice-presets.png"><img src="docs/screenshots/voice-presets.png" width="240" alt="Saved voices in NovelWeaver for Android"></a><br><strong>Saved voices</strong><br><sub>Keep named male/female voice presets with the project.</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/voice-preset-editor.png"><img src="docs/screenshots/voice-preset-editor.png" width="240" alt="Edit a voice preset in NovelWeaver for Android"></a><br><strong>Edit a voice preset</strong><br><sub>Select an installed voice, adjust speed and pitch, and preview the result.</sub></td><td align="center" valign="top"><a href="docs/screenshots/create-dialogue-voice.png"><img src="docs/screenshots/create-dialogue-voice.png" width="240" alt="Create a voice from a paragraph in NovelWeaver for Android"></a><br><strong>Create a voice from a paragraph</strong><br><sub>Create a preset directly from the dialogue dropdown and apply it automatically.</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/paragraph-voices.png"><img src="docs/screenshots/paragraph-voices.png" width="240" alt="Narrator settings per paragraph in NovelWeaver for Android"></a><br><strong>Narrator settings per paragraph</strong><br><sub>Set the voice for text outside quotation marks.</sub></td><td align="center" valign="top"><a href="docs/screenshots/paragraph-dialogue.png"><img src="docs/screenshots/paragraph-dialogue.png" width="240" alt="Dialogue settings per paragraph in NovelWeaver for Android"></a><br><strong>Dialogue settings per paragraph</strong><br><sub>Assign a speaker and voice for quoted text while retaining narrator settings.</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/narrator-defaults.png"><img src="docs/screenshots/narrator-defaults.png" width="240" alt="Project narrator defaults in NovelWeaver for Android"></a><br><strong>Project narrator defaults</strong><br><sub>Set shared narration settings and reuse saved presets.</sub></td><td align="center" valign="top"><a href="docs/screenshots/dialogue-defaults.png"><img src="docs/screenshots/dialogue-defaults.png" width="240" alt="Project dialogue defaults in NovelWeaver for Android"></a><br><strong>Project dialogue defaults</strong><br><sub>Set shared dialogue settings independently of narration.</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/pronunciations.png"><img src="docs/screenshots/pronunciations.png" width="240" alt="Pronunciation dictionary in NovelWeaver for Android"></a><br><strong>Pronunciation dictionary</strong><br><sub>Change how fictional words are spoken without changing the manuscript.</sub></td></tr>
+</table>
+
+</details>
+
+<details>
+<summary><strong>Continuity, threads, and search</strong> — 4 screenshots</summary>
+
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/link-threads.png"><img src="docs/screenshots/link-threads.png" width="240" alt="Link paragraphs to threads in NovelWeaver for Android"></a><br><strong>Link paragraphs to threads</strong><br><sub>Connect a passage to a character, artifact, event, or other story thread.</sub></td><td align="center" valign="top"><a href="docs/screenshots/threads.png"><img src="docs/screenshots/threads.png" width="240" alt="Story thread overview in NovelWeaver for Android"></a><br><strong>Story thread overview</strong><br><sub>See notes and related passages across books.</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/review-queue.png"><img src="docs/screenshots/review-queue.png" width="240" alt="Continuity review queue in NovelWeaver for Android"></a><br><strong>Continuity review queue</strong><br><sub>Compare changed source passages with linked references before marking them reviewed.</sub></td><td align="center" valign="top"><a href="docs/screenshots/search.png"><img src="docs/screenshots/search.png" width="240" alt="Search across your series in NovelWeaver for Android"></a><br><strong>Search across your series</strong><br><sub>Find matching passages in every book and jump to a paragraph.</sub></td></tr>
+</table>
+
+</details>
+
+<details>
+<summary><strong>Project files, covers, and exports</strong> — 5 screenshots</summary>
+
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/startup.png"><img src="docs/screenshots/startup.png" width="240" alt="Startup and recovery choices in NovelWeaver for Android"></a><br><strong>Startup and recovery choices</strong><br><sub>Start empty, open the last actual file, choose another project, or inspect recovery copies.</sub></td><td align="center" valign="top"><a href="docs/screenshots/project-files.png"><img src="docs/screenshots/project-files.png" width="240" alt="Project files and backups in NovelWeaver for Android"></a><br><strong>Project files and backups</strong><br><sub>Open, save, Save as, and export a previous-file backup through Android document providers.</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/import-export.png"><img src="docs/screenshots/import-export.png" width="240" alt="Import and project export in NovelWeaver for Android"></a><br><strong>Import and project export</strong><br><sub>Import books and export complete projects, including threads and history.</sub></td><td align="center" valign="top"><a href="docs/screenshots/book-covers.png"><img src="docs/screenshots/book-covers.png" width="240" alt="Front and back covers in NovelWeaver for Android"></a><br><strong>Front and back covers</strong><br><sub>Manage cover images and author metadata for reading and book exports.</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/export-book.png"><img src="docs/screenshots/export-book.png" width="240" alt="Export the current book in NovelWeaver for Android"></a><br><strong>Export the current book</strong><br><sub>Export plain text, Word DOCX, or EPUB ebooks with navigation and covers.</sub></td></tr>
+</table>
+
+</details>
+
+<details>
+<summary><strong>Quill assistant and help</strong> — 3 screenshots</summary>
+
+<table>
+<tr><td align="center" valign="top"><a href="docs/screenshots/quill.png"><img src="docs/screenshots/quill.png" width="240" alt="Quill writing assistant in NovelWeaver for Android"></a><br><strong>Quill writing assistant</strong><br><sub>Ask questions or request rewrites using selected manuscript context.</sub></td><td align="center" valign="top"><a href="docs/screenshots/quill-settings.png"><img src="docs/screenshots/quill-settings.png" width="240" alt="Your Open WebUI connection in NovelWeaver for Android"></a><br><strong>Your Open WebUI connection</strong><br><sub>Configure your server, model, and key; no live service or secret is shown here.</sub></td></tr>
+<tr><td align="center" valign="top"><a href="docs/screenshots/help.png"><img src="docs/screenshots/help.png" width="240" alt="Built-in help in NovelWeaver for Android"></a><br><strong>Built-in help</strong><br><sub>Find writing, saving, narration, local AI, and troubleshooting guidance.</sub></td></tr>
+</table>
+
+</details>
+
+<details>
+<summary><strong>Android Auto layout illustrations</strong> — chapter browsing, playback, and Maps tile</summary>
+
+**These two images are illustrative mockups, not screenshots from a vehicle or emulator.** Android Auto controls the actual layout, which varies with the car’s display and Android Auto version. They show the intended chapter browser, player, and compact media tile beside navigation.
+
+[![Illustrative Android Auto chapter browser and player](docs/screenshots/android-auto-illustration.webp)](docs/screenshots/android-auto-illustration.webp)
+
+[![Illustrative NovelWeaver media tile beside Maps](docs/screenshots/android-auto-maps-illustration.webp)](docs/screenshots/android-auto-maps-illustration.webp)
+
+</details>
 
 ## Install and start
 
