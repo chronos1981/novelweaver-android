@@ -1,4 +1,4 @@
-# NovelWeaver for Android 2.3.5
+# NovelWeaver for Android 2.3.6
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
@@ -19,6 +19,8 @@ shelf scroll position. Reopening the book resumes its saved reading section.
 Use **Spines / Covers** to rotate the books, and swipe a shelf to browse.
 Books without artwork receive a titled cover. Animations respect reduced-motion
 preferences. The library works offline with no additional rendering download.
+The bottom navigation is hidden while browsing the Bookcase; use **← Read** to
+return to the reader. Book actions sit near the bottom edge.
 
 **Details** lifts the selected book out of its shelf, rotates it to the back,
 and enlarges it to fit most of the screen. The library stays visible behind it.

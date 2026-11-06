@@ -1,5 +1,15 @@
 # Completed validation
 
+Version 2.3.6 hides the primary bottom navigation only while body.in-bookcase
+is active. The selected-book card moves into the freed space and the library
+bottom reserve is reduced; Quill remains above the book controls. Leaving the
+Bookcase restores the normal navigation through the existing view class toggle.
+
+The complete bundled UI flow passes, with visibility checks confirming no
+bottom menu in Bookcase and its restoration in Read. The phone layout was
+visually inspected. APK assembly and Android lint are run for this CSS-only
+change; native code and playback are retained.
+
 Version 2.3.5 targets the remaining blank band above the fullscreen running
 header. MainActivity already pads its root for status bars and the display
 cutout, while WebView can expose that same top inset through CSS env(). The
