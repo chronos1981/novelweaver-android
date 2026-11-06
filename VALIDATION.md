@@ -1,5 +1,14 @@
 # Completed validation
 
+Version 2.3.4 compacts the fullscreen running header in both native and fallback
+modes: 9px book title, a 32px exit control, smaller header gaps and top padding,
+and less space around the chapter heading. Manuscript font settings and regular
+Read layout are retained. Safe-area top padding remains in place.
+
+The existing bundled-UI flow passes, including fullscreen, fallback, Back return,
+bookmarks, and the bookcase interactions. The updated phone reader screenshot
+was visually checked. Android unit tests, assembly and lint pass.
+
 Version 2.3.3 makes Bookcase → Open book select ebook mode and enter the
 fullscreen reader automatically. A UI-only return trip retains the selected
 book and shelf/window scroll offsets. Exiting via the reader button, browser

@@ -1,0 +1,7 @@
+/* Compact running header in both native and fallback fullscreen readers. */
+.ebook-layout.ebook-immersive{padding-top:calc(3px + env(safe-area-inset-top))}
+.ebook-layout.ebook-immersive .ebook-running-head{min-height:32px;gap:8px;padding:0 0 4px;font-size:9px;line-height:1.25;letter-spacing:.06em}
+.ebook-layout.ebook-immersive .ebook-running-head>span{min-width:0;flex:1}
+.ebook-layout.ebook-immersive .ebook-exit-button{min-height:32px;padding:5px 8px;border-radius:7px;font-size:11px}
+.ebook-layout.ebook-immersive .ebook-viewport{margin-top:6px}
+.ebook-layout.ebook-immersive .ebook-column-flow .ebook-chapter-title{margin:.5em .2em .75em}
