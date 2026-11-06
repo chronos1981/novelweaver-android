@@ -1,5 +1,22 @@
 # Completed validation
 
+Version 2.2.0 adds a persistent device-local Bookcase beside Edit chapter in Read.
+Multiple JSON series and individual EPUB/DOCX/TXT/JSON books can be imported.
+Each shelf stores a complete independent project; imports retain source files,
+existing shelf updates require a revision match, and malformed stored files are
+retained with a visible warning. Normal save/open-last and narration use the
+selected shelf file.
+
+Validation: 13 JavaScript test files, 79 native unit tests, APK assembly and
+Android lint. A phone-sized Chromium flow exercised multiple series, duplicate
+imports, cover/text EPUB round trips, DOCX/TXT, partial failures, active-shelf
+updates, revision conflicts, cancelled switching, and empty Read navigation.
+No external network requests occurred. Phone and desktop screenshots were
+visually inspected. Physical-device import and playback checks remain manual.
+
+EPUB output now contains valid standalone XHTML rather than accidentally
+embedded application styles/CSP; import also accepts legacy HTML chapter pages.
+
 Version 2.1.3 adds Create new voice… directly to the per-paragraph dialogue
 picker. The picker remains enabled with no saved profiles. Creation reuses the
 installed-voice editor and commits the preset and paragraph assignment in one

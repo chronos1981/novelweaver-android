@@ -37,6 +37,7 @@ public final class MainActivity extends Activity {
     private WebChromeClient.CustomViewCallback fullscreenCallback;
     private ValueCallback<Uri[]> upload;
     private ProjectSession session;
+    private BookcaseStore bookcase;
     private KeyVault vault;
     private PlaybackClient narrator;
     private Pending pending;
@@ -62,9 +63,12 @@ public final class MainActivity extends Activity {
             else view.setPadding(insets.getSystemWindowInsetLeft(),insets.getSystemWindowInsetTop(),insets.getSystemWindowInsetRight(),insets.getSystemWindowInsetBottom());
             return insets;
         });
+        try{bookcase=new BookcaseStore(new File(getFilesDir(),"bookcase"),this::bookcaseThumbnail);}catch(IOException e){throw new IllegalStateException(e);}
         session=new ProjectSession(getFilesDir(),new ProjectSession.Documents(){
             public String read(String uri) throws Exception {return readDocument(Uri.parse(uri));}
             public void write(String uri,String json) throws Exception {
+                Uri parsed=Uri.parse(uri);String shelf="file".equals(parsed.getScheme())?bookcase.idForPath(parsed.getPath()):"";
+                if(!shelf.isEmpty()){ProjectSession.atomic(bookcase.file(shelf),json);return;}
                 try(OutputStream out=getContentResolver().openOutputStream(Uri.parse(uri),"wt")){
                     if(out==null)throw new IOException("This document provider does not allow writing. Use Save as to choose another location.");
                     out.write(json.getBytes(StandardCharsets.UTF_8));out.flush();
@@ -130,14 +134,32 @@ public final class MainActivity extends Activity {
     }
 
     private String readDocument(Uri uri) throws Exception {
+        String shelf="file".equals(uri.getScheme())?bookcase.idForPath(uri.getPath()):"";
+        if(!shelf.isEmpty())return ProjectSession.readFile(bookcase.file(shelf));
         InputStream stream=getContentResolver().openInputStream(uri);
         if(stream==null)throw new IOException("The selected file could not be opened.");
         return new String(QuillNetwork.readLimited(stream,ProjectSession.MAX_BYTES,null),StandardCharsets.UTF_8);
     }
     private String documentName(Uri uri){
+        if("file".equals(uri.getScheme())){String name=bookcase.displayName(uri.getPath());if(name!=null)return name;}
         try(Cursor c=getContentResolver().query(uri,new String[]{OpenableColumns.DISPLAY_NAME},null,null,null)){
             if(c!=null&&c.moveToFirst())return c.getString(0);
         }catch(Exception ignored){}return "Selected project file";
+    }
+    private String currentBookcaseId(){String value=session.currentUri();if(value==null)return "";Uri uri=Uri.parse(value);return "file".equals(uri.getScheme())?bookcase.idForPath(uri.getPath()):"";}
+    private String bookcaseThumbnail(JSONObject cover){
+        android.graphics.Bitmap image=null;
+        try{
+            String data=cover.optString("DataUrl");if(data.length()>2_000_000||!data.matches("^data:image/(png|jpeg);base64,[A-Za-z0-9+/=]+$"))return "";
+            byte[] bytes=Base64.decode(data.substring(data.indexOf(',')+1),Base64.DEFAULT);
+            android.graphics.BitmapFactory.Options opts=new android.graphics.BitmapFactory.Options();opts.inJustDecodeBounds=true;
+            android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.length,opts);
+            if(opts.outWidth<=0||opts.outHeight<=0||(long)opts.outWidth*opts.outHeight>50_000_000)return "";
+            opts.inJustDecodeBounds=false;opts.inSampleSize=1;while(opts.outWidth/opts.inSampleSize>240||opts.outHeight/opts.inSampleSize>360)opts.inSampleSize*=2;
+            image=android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.length,opts);if(image==null)return "";
+            ByteArrayOutputStream out=new ByteArrayOutputStream();image.compress(android.graphics.Bitmap.CompressFormat.JPEG,82,out);
+            return "data:image/jpeg;base64,"+Base64.encodeToString(out.toByteArray(),Base64.NO_WRAP);
+        }catch(Exception e){return "";}finally{if(image!=null)image.recycle();}
     }
     private void rememberPermission(Uri uri,Intent data){
         boolean read=(data.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION)!=0;
@@ -189,6 +211,13 @@ public final class MainActivity extends Activity {
                 }catch(Exception e){failure(id,e);}});break;
             case "open":cancelAuto();pick(id,"open",p,OPEN);break;
             case "openLast":cancelAuto();work(documentIO,id,session::openLast);break;
+            case "bookcaseList":work(documentIO,id,()->bookcase.list(currentBookcaseId()));break;
+            case "bookcaseRead":work(documentIO,id,()->bookcase.read(p.getString("id")));break;
+            case "bookcasePut":work(documentIO,id,()->bookcase.put(p.optString("id",""),p.getString("json"),p.optString("revision",null)));break;
+            case "bookcaseOpen":cancelAuto();work(documentIO,id,()->{
+                String shelf=p.getString("id");bookcase.read(shelf);
+                return session.open(Uri.fromFile(bookcase.file(shelf)).toString()).put("bookcaseId",shelf);
+            });break;
             case "openRecovery":cancelAuto();work(documentIO,id,()->session.openRecovery(p.getString("id")));break;
             case "reloadDisk":cancelAuto();work(documentIO,id,()->{String uri=session.currentUri();if(uri==null)throw new IOException("No project file is selected.");return session.open(uri);});break;
             case "new":cancelAuto();work(documentIO,id,()->{JSONObject r=session.startNew(p.getString("json"));publishLibrary();return r;});break;

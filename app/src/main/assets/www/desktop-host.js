@@ -18,7 +18,7 @@ window.DesktopHost=(()=>{
   if(signal?.aborted){reject(Error('Request stopped.'));return}
   const id=String(++sequence),abort=()=>{pending.delete(id);AndroidBridge.postMessage(JSON.stringify({id:String(++sequence),action:'cancel',payload:{requestId:id}}));reject(Error('Request stopped. The server may finish processing it.'))};
   let blocker=null;
-  if(['open','openLast','openRecovery','reloadDisk','new'].includes(action)){
+  if(['open','openLast','openRecovery','reloadDisk','new','bookcaseOpen'].includes(action)){
    blocker=document.createElement('div');blocker.setAttribute('role','status');blocker.textContent='Opening project…';
    blocker.style.cssText='position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;background:rgba(19,35,48,.92);color:white;font:18px sans-serif';document.body.append(blocker);
   }
