@@ -1,4 +1,4 @@
-const bookcase={shelves:[],activeId:'',loading:false,busy:false,error:'',warnings:[],importTarget:'',importTitle:'Imported books',selection:null,spines:false,detailsToken:0,inspection:null};
+const bookcase={shelves:[],activeId:'',loading:false,busy:false,error:'',warnings:[],importTarget:'',importTitle:'Imported books',selection:null,spines:false,detailsToken:0,inspection:null,readerReturn:null};
 function bookcaseCoverUrl(value){return typeof value==='string'&&/^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)?value:''}
 function bookcaseWorkspaceShelf(){return {id:'__workspace__',title:S.project.Title||'Current series',workspace:true,books:S.project.Books.map(b=>({id:b.Id,title:b.Title,author:b.Author||'',cover:bookcaseCoverUrl(b.FrontCover?.DataUrl),spine:bookcaseCoverUrl(b.SpineCover?.DataUrl)}))}}
 function bookcaseShelves(){
@@ -48,8 +48,28 @@ async function bookcaseRefresh(){
 }
 async function bookcaseShow(){flushAllEdits();await saveLocal();S.view='bookcase';closeSidebar();render();await bookcaseRefresh()}
 function bookcaseIsEmptyWorkspace(){return S.project.Title==='Untitled Series'&&S.project.Books.length<=1&&S.project.Books.every(b=>b.Title==='Book One'&&!b.Author&&!b.FrontCover&&!b.BackCover&&!b.SpineCover)&&!S.project.Threads.length&&!S.project.History.length&&!S.project.Reviews.length&&!S.project.SpeechProfiles?.length&&S.project.Chapters.every(c=>c.Title==='Chapter 1'&&c.Paragraphs.every(p=>!p.Text.trim()&&!p.Speech))}
+// A bookcase reading trip is UI state; it never goes into the project file.
+function bookcaseCaptureReadingReturn(shelfId,bookId){
+ return {shelfId,bookId,y:window.scrollY||0,main:document.getElementById('main')?.scrollTop||0,shelves:[...document.querySelectorAll('.bookcase-shelf .bookcase-books')].map(el=>({id:el.querySelector('.bookcase-book')?.dataset.shelf,left:el.scrollLeft}))};
+}
+function bookcaseReturnFromReader(){
+ const trip=bookcase.readerReturn;if(!trip)return false;bookcase.readerReturn=null;
+ bookcase.selection={shelf:trip.shelfId,book:trip.bookId};S.view='bookcase';render();
+ requestAnimationFrame(()=>{
+  if(S.view!=='bookcase')return;
+  for(const el of document.querySelectorAll('.bookcase-shelf .bookcase-books')){const saved=trip.shelves.find(s=>s.id===el.querySelector('.bookcase-book')?.dataset.shelf);if(saved)el.scrollLeft=saved.left}
+  const main=document.getElementById('main');if(main)main.scrollTop=trip.main;window.scrollTo(0,trip.y);
+  document.querySelector('.bookcase-shelf .bookcase-book.is-selected')?.focus({preventScroll:true});
+ });return true;
+}
+function bookcaseReaderBack(){
+ if(!bookcase.readerReturn)return false;
+ // The native fullscreenchange event and the explicit exit may race. Clearing
+ // the trip before rendering makes returning idempotent in both cases.
+ ebookExitFullscreen().then(()=>{if(bookcase.readerReturn)bookcaseReturnFromReader()}).catch(()=>bookcaseReturnFromReader());return true;
+}
 async function bookcaseOpen(shelfId,bookId){
- if(bookcase.busy||desktop.busy)return;bookcase.busy=true;desktop.busy=true;
+ if(bookcase.busy||desktop.busy)return;const readingReturn=bookcaseCaptureReadingReturn(shelfId,bookId);let readingStarted=false;bookcase.busy=true;desktop.busy=true;
  try{
   if(shelfId!=='__workspace__'&&shelfId!==bookcase.activeId){
    if(!bookcaseIsEmptyWorkspace()&&!await desktopConfirmLeave())return;
@@ -58,9 +78,9 @@ async function bookcaseOpen(shelfId,bookId){
    if(!desktopHandleResult(result))return;desktopAdopt(result.project);bookcase.activeId=result.bookcaseId||shelfId;
   }
   const book=S.project.Books.find(b=>b.Id===bookId)||S.project.Books[0];if(!book)throw Error('This shelf has no books.');
-  listenStop();S.bookId=book.Id;S.chapterId=S.project.Chapters.find(c=>c.BookId===book.Id)?.Id||null;S.readChapterId=null;S.reader.page=0;S.view='read';render();await saveLocal();
+  listenStop();S.bookId=book.Id;S.chapterId=S.project.Chapters.find(c=>c.BookId===book.Id)?.Id||null;S.readChapterId=null;S.reader.page=0;S.reader.mode='ebook';bookcase.readerReturn={...readingReturn,bookId:book.Id,projectId:S.project.Id};readingStarted=true;bookcase.busy=false;desktop.busy=false;S.view='read';readerSave();render();await saveLocal();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));if(S.view==='read'&&bookcase.readerReturn)await ebookEnterFullscreen();
  }catch(error){modal('Could not open book',`<p role="alert">${h(error.message)}</p>`)}
- finally{bookcase.busy=false;desktop.busy=false;if(S.view==='bookcase')render()}
+ finally{bookcase.busy=false;desktop.busy=false;if(S.view==='bookcase'&&!readingStarted)render()}
 }
 async function bookcaseCheckpoint(){flushAllEdits();await saveLocal();if(desktop.blocked)throw Error('Resolve the current project file conflict before importing books.');if(desktop.path&&!await desktopSave())throw Error('Save the current project before importing books.')}
 async function bookcaseKeepCurrent(){

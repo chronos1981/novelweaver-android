@@ -43,9 +43,10 @@ replace("['FrontCover','BackCover'].includes(side)", "['FrontCover','BackCover',
 replace("modal('Book covers',", "modal('Manage covers',")
 replace('<section class="cover-card"><h3>${label}', '<section class="cover-card ${side===\'SpineCover\'?\'spine-cover-card\':\'\'}"><h3>${label}')
 replace('EPUB and Word include both covers; TXT contains text only.', 'Front and back covers are included in EPUB and Word exports. Spine images are used in the 3D library and kept in project backups; TXT contains text only.')
-replace('function render(){', 'function render(){if(bookcase.inspection)bookcaseCloseDetails(true);')
+replace('function render(){', "function render(){if(bookcase.readerReturn&&(S.view!=='read'||S.project.Id!==bookcase.readerReturn.projectId))bookcase.readerReturn=null;if(bookcase.inspection)bookcaseCloseDetails(true);")
 replace("const host=$('#main-body');switch(S.view)", "const host=$('#main-body');document.body.classList.toggle('in-bookcase',S.view==='bookcase');switch(S.view)")
 
+replace("if(S.view==='read'&&S.reader.mode==='ebook')render();", "if(bookcase.readerReturn){bookcaseReturnFromReader();return}if(S.view==='read'&&S.reader.mode==='ebook')render();")
 # The bookcase is an independent persistent collection of series copies.
 replace('<button class="outline-button" data-action="go-write">✎ Edit chapter</button>', '<button class="outline-button" data-action="go-write">✎ Edit chapter</button><button class="outline-button" data-action="bookcase-show">▤ Bookcase</button>')
 replace("case 'read':host.innerHTML=renderRead();", "case 'bookcase':host.innerHTML=renderBookcase();break;case 'read':host.innerHTML=renderRead();")

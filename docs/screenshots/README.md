@@ -22,3 +22,6 @@ and two vacant import bays. These are captures of the working bundled UI.
 
 Version 2.3.2 updates the back-cover capture to show the live book rotated and
 enlarged within the library, with no separate dialog.
+
+Version 2.3.3 adds bookcase-ebook-fullscreen.png, captured after opening a book
+from the Bookcase directly into the fullscreen ebook reader.

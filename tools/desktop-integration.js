@@ -135,7 +135,8 @@ window.NWDesktop = {command:desktopCommand};
 window.addEventListener('nw-file-status',event=>desktopHandleResult(event.detail));
 window.NWAndroid={
   pause(){if(desktop.starting)return;flushAllEdits();saveLocal()},
-  back(){if(bookcaseCloseDetails())return;if($('#modal-host .modal')){const fn=modalResolve;closeModal();fn?.('cancel')}else if(quill.open)quillClose();else if(S.sidebarOpen)closeSidebar();else desktopCommand('close')}
+  fullscreenBack(){if(bookcaseReaderBack())return;ebookExitFullscreen()},
+  back(){if(bookcaseCloseDetails())return;if($('#modal-host .modal')){const fn=modalResolve;closeModal();fn?.('cancel')}else if(bookcaseReaderBack())return;else if(document.documentElement.classList.contains('ebook-reading-active')){ebookExitFullscreen();return}else if(quill.open)quillClose();else if(S.sidebarOpen)closeSidebar();else desktopCommand('close')}
 };
 document.addEventListener('keydown', event => {
   if (!(event.ctrlKey || event.metaKey)) return;
