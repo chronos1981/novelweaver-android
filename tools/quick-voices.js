@@ -1,12 +1,16 @@
-function speechQuickPicker(p){
- const profiles=cleanSpeechProfiles(S.project.SpeechProfiles),tag=cleanSpeechTag(p.Speech);
+function speechQuickSelection(p){
+ const tag=cleanSpeechTag(p.Speech);
  const settings={...(tag?.Role==='dialogue'?cleanSpeechSettings(tag):{}),...cleanSpeechSettings(tag?.Dialogue)};
- const custom=Object.keys(settings).some(key=>key!=='ProfileId'),selected=custom?'__keep__':settings.ProfileId||'';
+ return Object.keys(settings).some(key=>key!=='ProfileId')?'__keep__':settings.ProfileId||'';
+}
+function speechQuickPicker(p){
+ const profiles=cleanSpeechProfiles(S.project.SpeechProfiles),selected=speechQuickSelection(p),custom=selected==='__keep__';
  const options=`<option value="" ${!selected?'selected':''}>Use dialogue defaults</option>`+
   (custom?'<option value="__keep__" selected>Keep custom voice settings</option>':'')+
   (selected&&selected!=='__keep__'&&!profiles.some(v=>v.Id===selected)?`<option value="${h(selected)}" selected>Unavailable saved voice</option>`:'')+
-  profiles.map(v=>`<option value="${h(v.Id)}" ${v.Id===selected?'selected':''}>${h(v.Name)} · ${v.Gender==='male'?'Male':v.Gender==='female'?'Female':'Other'}</option>`).join('');
- return `<div class="paragraph-quick-voice" role="group" aria-label="Quick dialogue voice"><label><span>Dialogue voice</span><select data-quick-voice="${h(p.Id)}" aria-label="Saved dialogue voice" ${!profiles.length?'disabled':''}>${options}</select></label>${!profiles.length?'<button class="mini-link" data-action="speech-presets">Save a voice…</button>':''}</div>`;
+  profiles.map(v=>`<option value="${h(v.Id)}" ${v.Id===selected?'selected':''}>${h(v.Name)} · ${v.Gender==='male'?'Male':v.Gender==='female'?'Female':'Other'}</option>`).join('')+
+  '<option value="__create_voice__">＋ Create new voice…</option>';
+ return `<div class="paragraph-quick-voice" role="group" aria-label="Quick dialogue voice"><label><span>Dialogue voice</span><select data-quick-voice="${h(p.Id)}" aria-label="Saved dialogue voice">${options}</select></label></div>`;
 }
 function speechQuickTag(previous,profileId,profiles){
  const tag=cleanSpeechTag(previous)||{},profile=profiles.find(p=>p.Id===profileId);
@@ -16,6 +20,19 @@ function speechQuickTag(previous,profileId,profiles){
 }
 function speechQuickChange(pid){
  flushAllEdits();const f=locate(pid),select=$$('[data-quick-voice]').find(el=>el.dataset.quickVoice===pid);if(!f||!select)return;
+ if(select.value==='__create_voice__'){
+  select.value=speechQuickSelection(f.paragraph);
+  const project=S.project,paragraph=f.paragraph,main=document.getElementById('main'),top=main?.scrollTop||0,y=window.scrollY||0;
+  const restore=()=>{if(main)main.scrollTop=top;window.scrollTo(0,y);$$('[data-quick-voice]').find(el=>el.dataset.quickVoice===pid)?.focus({preventScroll:true})};
+  speechPresetEdit(null,'',{
+   onSave(profile){
+    const current=locate(pid);
+    if(S.project!==project||current?.paragraph!==paragraph)throw Error('The original paragraph is no longer available. Cancel and choose its dialogue voice again.');
+    paragraph.Speech=speechQuickTag(paragraph.Speech,profile.Id,[profile]);
+   },
+   afterSave(){restore();toast('Dialogue voice created and applied')},onCancel:restore
+  });return;
+ }
  if(select.value==='__keep__'){toast('Custom voice settings kept');return}
  try{
   const next=speechQuickTag(f.paragraph.Speech,select.value,cleanSpeechProfiles(S.project.SpeechProfiles));

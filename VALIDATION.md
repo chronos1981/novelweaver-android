@@ -1,5 +1,19 @@
 # Completed validation
 
+Version 2.1.3 adds Create new voice… directly to the per-paragraph dialogue
+picker. The picker remains enabled with no saved profiles. Creation reuses the
+installed-voice editor and commits the preset and paragraph assignment in one
+save. Cancellation restores the prior selection, while validation retries keep
+the draft fields and the paragraph target. Stale paragraph/project targets are
+rejected before mutation. The generic saved-voice editor retains its existing
+save-and-return workflow.
+
+All 11 JavaScript suites pass. A 393×852 Chromium headless UI check exercised
+the actual bundled change handler, created and auto-applied a female preset,
+verified narrator retention and one save, then cancelled a second creation with
+no changes. The mobile form and applied-picker screenshots were visually checked.
+No native playback code changed in this release.
+
 Version 2.1.2 replaces direct TextToSpeech.speak playback with per-unit private
 file synthesis and an app-owned MediaPlayer using USAGE_MEDIA/CONTENT_TYPE_SPEECH.
 This addresses the audio-UID/session association that the 2.1.1 button handlers

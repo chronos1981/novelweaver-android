@@ -82,11 +82,17 @@ function speechPresetMenu(){
  listenStop();const profiles=cleanSpeechProfiles(S.project.SpeechProfiles);
  modal('Saved voices',`<p>Save voices once, then select them for later paragraphs or narration/dialogue defaults. Android does not reliably label voice gender: preview a voice and label it Male or Female yourself.</p><div class="option-list">${profiles.map(p=>`<div class="option-row"><span>${h(p.Gender==='male'?'Male':p.Gender==='female'?'Female':'Other')} · ${h(p.Name)}</span><button class="outline-button" data-action="speech-preset-edit" data-id="${h(p.Id)}">Edit</button></div>`).join('')||'<p>No saved voices yet.</p>'}</div><button class="primary-button" data-action="speech-preset-new">+ Save a voice</button>`,[{text:'Close',value:'cancel'}],()=>window.NWTTS?.stop());
 }
-function speechPresetEdit(pid=null,error=''){
- listenStop();const preset=S.project.SpeechProfiles?.find(p=>p.Id===pid)||{Name:'',Gender:'male'};
- modal(pid?'Edit saved voice':'Save a voice',`${error?`<p role="alert">${h(error)}</p>`:''}<label class="form-label" for="speech-preset-name">Preset name</label><input class="text-input" id="speech-preset-name" maxlength="100" placeholder="e.g. Niels or Female narrator" value="${h(preset.Name)}"><label class="form-label" for="speech-gender">Voice label</label><select class="text-input" id="speech-gender"><option value="male" ${preset.Gender==='male'?'selected':''}>Male</option><option value="female" ${preset.Gender==='female'?'selected':''}>Female</option><option value="other" ${preset.Gender==='other'?'selected':''}>Other</option></select>${speechFields(preset,false)}<p class="tiny">Choose an installed voice and preview it. These labels organize your presets; they do not change the speech engine’s voice. Presets are saved with the project.</p>`,[{text:'Cancel',value:'cancel'},{text:'Save voice',value:'save',primary:true}],v=>{
-  window.NWTTS?.stop();if(v!=='save')return;
-  try{const settings=speechReadFields(),name=$('#speech-preset-name').value.trim();if(!name)throw Error('Enter a preset name.');if(!settings.Voice)throw Error('Choose an installed voice to save.');const value={Id:pid||id(),Name:name,Gender:$('#speech-gender').value,...settings};S.project.SpeechProfiles=cleanSpeechProfiles(S.project.SpeechProfiles);const ix=S.project.SpeechProfiles.findIndex(p=>p.Id===value.Id);if(ix>=0)S.project.SpeechProfiles[ix]=value;else S.project.SpeechProfiles.push(value);changed();render();speechPresetMenu()}catch(e){speechPresetEdit(pid,e.message)}
+function speechPresetEdit(pid=null,error='',flow=null,draft=null){
+ listenStop();const preset=draft||S.project.SpeechProfiles?.find(p=>p.Id===pid)||{Name:'',Gender:'male'};
+ modal(pid?'Edit saved voice':flow?'Create dialogue voice':'Save a voice',`${error?`<p role="alert">${h(error)}</p>`:''}<label class="form-label" for="speech-preset-name">Preset name</label><input class="text-input" id="speech-preset-name" maxlength="100" placeholder="e.g. Niels or Female narrator" value="${h(preset.Name)}"><label class="form-label" for="speech-gender">Voice label</label><select class="text-input" id="speech-gender"><option value="male" ${preset.Gender==='male'?'selected':''}>Male</option><option value="female" ${preset.Gender==='female'?'selected':''}>Female</option><option value="other" ${preset.Gender==='other'?'selected':''}>Other</option></select>${speechFields(preset,false)}<p class="tiny">Choose an installed voice and preview it. These labels organize your presets; they do not change the speech engine’s voice. Presets are saved with the project.</p>`,[{text:'Cancel',value:'cancel'},{text:flow?'Create voice':'Save voice',value:'save',primary:true}],v=>{
+  window.NWTTS?.stop();if(v!=='save'){flow?.onCancel?.();return}
+  const draft={Name:$('#speech-preset-name').value,Gender:$('#speech-gender').value,Voice:$('#speech-voice').value,Rate:$('#speech-rate').value,Pitch:$('#speech-pitch').value};
+  try{
+   const settings=speechReadFields(),name=draft.Name.trim();if(!name)throw Error('Enter a preset name.');if(!settings.Voice)throw Error('Choose an installed voice to save.');
+   const value={Id:pid||id(),Name:name,Gender:draft.Gender,...settings},profiles=cleanSpeechProfiles(S.project.SpeechProfiles),ix=profiles.findIndex(p=>p.Id===value.Id);
+   flow?.onSave?.(value);if(ix>=0)profiles[ix]=value;else profiles.push(value);S.project.SpeechProfiles=profiles;
+   changed();render();if(flow)flow.afterSave?.(value);else speechPresetMenu();
+  }catch(e){speechPresetEdit(pid,e.message,flow,draft)}
  });
 }
 function speechPreview(prefix='speech'){
