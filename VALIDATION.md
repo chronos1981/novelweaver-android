@@ -1,5 +1,21 @@
 # Completed validation
 
+Version 2.3.1 corrects the difference between the library concept and the
+previous implementation. The actual scene now uses locally bundled shelf and
+ivy artwork, with carved walnut detail, integrated lighting and brass decor;
+book volumes and controls remain interactive. The header is smaller, books
+fill the shelf, empty bays offer imports, and the mobile Quill launcher sits
+above the selected-book card instead of covering its buttons.
+
+Validation: all 13 JavaScript test files and the complete Chromium import,
+cover/spine and Details flow. Additional checks cover the reported single-series
+case, three books fitting across a phone shelf, a heading below 150 CSS pixels,
+Quill/button separation, and no horizontal page overflow at 320px and 393px.
+Single-series, multi-series and desktop captures were visually inspected.
+Android assembly, 80 native tests and lint pass. The two artwork assets are
+bundled WebP resources; no network access is required. Native playback and
+manuscript serialization are unchanged in this release.
+
 Version 2.3.0 replaces the flat Bookcase with an offline CSS 3D library:
 wood-grain shelves, lit series labels, cover/spine rotation, selected-book
 pull-forward animation and an Open book / Details card. Details reads the full
