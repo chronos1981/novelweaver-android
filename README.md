@@ -1,4 +1,4 @@
-# NovelWeaver for Android 2.3.0
+# NovelWeaver for Android 2.3.1
 
 An Android app with the current NovelWeaver editing interface and engine bundled
 offline. The native Android host handles files, Android Keystore encryption,
@@ -8,7 +8,10 @@ to edit your writing and does not need a local web server.
 ## Bookcase
 
 In **Read**, select **Bookcase** immediately to the right of **Edit chapter**.
-Each series has its own lit wooden shelf. Books have 3D covers, spines and page
+Each series has its own lit wooden shelf, with locally bundled walnut artwork,
+carved trim, warm downlights, brass ornaments and trailing ivy. The compact
+header and larger books follow the library concept. Vacant bays offer import
+controls until more series are added. Books have 3D covers, spines and page
 edges. Tap a book to pull it forward, then choose **Open book** to read it.
 Use **Spines / Covers** to rotate the books, and swipe a shelf to browse.
 Books without artwork receive a titled cover. Animations respect reduced-motion
@@ -37,7 +40,7 @@ not supported.
 
 ## Screenshots
 
-The gallery covers the Android app’s main features. The Bookcase and Manage covers images show version 2.3.0; the other images are captures of the [2.1.3 bundled editor](https://github.com/chronos1981/novelweaver-android/pull/2), rendered at a phone-sized **430 × 1000** viewport with demonstration manuscripts, covers, and voice names. Native Android status bars and document-picker dialogs are not included. Click any image to open it at full size.
+The gallery covers the Android app’s main features. The Bookcase and Manage covers images show version 2.3.1; the other images are captures of the [2.1.3 bundled editor](https://github.com/chronos1981/novelweaver-android/pull/2), rendered at a phone-sized **430 × 1000** viewport with demonstration manuscripts, covers, and voice names. Native Android status bars and document-picker dialogs are not included. Click any image to open it at full size.
 
 <table>
 <tr><td align="center" valign="top"><a href="docs/screenshots/write.png"><img src="docs/screenshots/write.png" width="240" alt="Writing editor in NovelWeaver for Android"></a><br><strong>Writing editor</strong><br><sub>Edit paragraphs, choose dialogue presets, and track edit counts.</sub></td><td align="center" valign="top"><a href="docs/screenshots/listen.png"><img src="docs/screenshots/listen.png" width="240" alt="Listen and voice filters in NovelWeaver for Android"></a><br><strong>Listen and voice filters</strong><br><sub>Choose chapter/book range, language, local or online voices, speed, and playback controls.</sub></td></tr>
