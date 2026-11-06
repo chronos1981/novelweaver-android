@@ -62,8 +62,9 @@ public final class BookcaseStore {
             String id=file.getName().substring(0,36);
             try{
                 JSONObject stored=read(id),project=stored.getJSONObject("project");JSONArray source=project.getJSONArray("Books"),books=new JSONArray();
-                for(int i=0;i<source.length();i++){JSONObject b=source.getJSONObject(i);String cover="";if(artwork!=null&&b.optJSONObject("FrontCover")!=null){try{cover=artwork.thumbnail(b.getJSONObject("FrontCover"));}catch(Exception ignored){}}
-                    books.put(new JSONObject().put("id",b.getString("Id")).put("title",b.optString("Title","Untitled book")).put("author",b.optString("Author","")).put("cover",cover));}
+                for(int i=0;i<source.length();i++){JSONObject b=source.getJSONObject(i);String cover="",spine="";if(artwork!=null&&b.optJSONObject("FrontCover")!=null){try{cover=artwork.thumbnail(b.getJSONObject("FrontCover"));}catch(Exception ignored){}}
+                    if(artwork!=null&&b.optJSONObject("SpineCover")!=null){try{spine=artwork.thumbnail(b.getJSONObject("SpineCover"));}catch(Exception ignored){}}
+                    books.put(new JSONObject().put("id",b.getString("Id")).put("title",b.optString("Title","Untitled book")).put("author",b.optString("Author","")).put("cover",cover).put("spine",spine));}
                 shelves.put(new JSONObject().put("id",id).put("title",project.optString("Title","Untitled series")).put("books",books).put("modified",file.lastModified()));
             }catch(Exception e){warnings.put("A saved series could not be read ("+id+"). Its file has been retained.");}
         }

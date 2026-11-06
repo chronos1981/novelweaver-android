@@ -12,3 +12,6 @@ illustrations previously created for this project. They are explicitly marked
 as illustrations in the main README and are not evidence of testing in a car.
 
 The README documentation change does not merge or alter the app feature branches.
+
+The Bookcase, spine browsing, back-cover Details, and Manage covers captures
+were updated from the bundled 2.3.0 UI with demonstration books and artwork.

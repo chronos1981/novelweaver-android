@@ -1,20 +1,52 @@
-const bookcase={shelves:[],activeId:'',loading:false,busy:false,error:'',warnings:[],importTarget:'',importTitle:'Imported books'};
+const bookcase={shelves:[],activeId:'',loading:false,busy:false,error:'',warnings:[],importTarget:'',importTitle:'Imported books',selection:null,spines:false,detailsToken:0};
 function bookcaseCoverUrl(value){return typeof value==='string'&&/^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/.test(value)?value:''}
-function bookcaseWorkspaceShelf(){return {id:'__workspace__',title:S.project.Title||'Current series',workspace:true,books:S.project.Books.map(b=>({id:b.Id,title:b.Title,author:b.Author||'',cover:bookcaseCoverUrl(b.FrontCover?.DataUrl)}))}}
-function bookcaseBook(book,shelf){
- const cover=bookcaseCoverUrl(book.cover),colors=['#294e59','#5e4d65','#6c5344','#3d6257','#4c5878'],color=colors[[...book.title].reduce((sum,c)=>sum+c.charCodeAt(0),0)%colors.length];
- return `<button type="button" class="bookcase-book" data-action="bookcase-open" data-shelf="${h(shelf.id)}" data-book="${h(book.id)}" ${bookcase.busy?'disabled':''} aria-label="Read ${h(book.title)}"><span class="bookcase-cover" style="--book-color:${color}">${cover?`<img src="${h(cover)}" alt="" loading="lazy" decoding="async">`:`<span class="bookcase-fallback"><span>${h(book.title)}</span><small>${h(book.author||'NovelWeaver')}</small></span>`}</span><span class="bookcase-book-title">${h(book.title)}</span>${book.author?`<span class="bookcase-author">${h(book.author)}</span>`:''}</button>`;
-}
-function renderBookcase(){
+function bookcaseWorkspaceShelf(){return {id:'__workspace__',title:S.project.Title||'Current series',workspace:true,books:S.project.Books.map(b=>({id:b.Id,title:b.Title,author:b.Author||'',cover:bookcaseCoverUrl(b.FrontCover?.DataUrl),spine:bookcaseCoverUrl(b.SpineCover?.DataUrl)}))}}
+function bookcaseShelves(){
  const shelves=[...bookcase.shelves].sort((a,b)=>a.title.localeCompare(b.title));
  if(bookcase.activeId){const at=shelves.findIndex(s=>s.id===bookcase.activeId);if(at>=0)shelves[at]={...bookcaseWorkspaceShelf(),id:bookcase.activeId,workspace:false}}
  else if(S.project.Books.length)shelves.unshift(bookcaseWorkspaceShelf());
- return pageTitle('YOUR READING ROOM','Bookcase','A shelf for every series. Open a book by its cover.',`<button class="outline-button" data-action="bookcase-back">← Back to Read</button>`)+
- `<div class="bookcase-toolbar"><button class="primary-button" data-action="bookcase-import-series" ${bookcase.busy?'disabled':''}>+ Import series</button><button class="outline-button" data-action="bookcase-import-books" ${bookcase.busy?'disabled':''}>+ Import books</button>${!bookcase.activeId&&S.project.Books.length?`<button class="outline-button" data-action="bookcase-keep" ${bookcase.busy?'disabled':''}>Keep current series</button>`:''}</div><p class="item-sub">Imported copies stay on this device. Series use .novel.json; individual books can be EPUB, DOCX, TXT, or .novel.json. Use Save as to keep a separate backup.</p>`+
- (bookcase.busy?'<p class="bookcase-status" role="status">Working on your bookcase…</p>':'')+(bookcase.loading?'<p role="status">Loading saved shelves…</p>':'')+
- (bookcase.error?`<div class="callout warning" role="alert">${h(bookcase.error)} <button class="outline-button" data-action="bookcase-refresh">Retry</button></div>`:'')+
+ return shelves;
+}
+function bookcaseSelected(shelves=bookcaseShelves()){
+ let shelf=shelves.find(s=>s.id===bookcase.selection?.shelf),book=shelf?.books.find(b=>b.id===bookcase.selection?.book);
+ if(!book){shelf=shelves.find(s=>s.books.length);book=shelf?.books[0]}
+ bookcase.selection=book?{shelf:shelf.id,book:book.id}:null;return book?{shelf,book}:null;
+}
+function bookcaseBook(book,shelf){
+ const cover=bookcaseCoverUrl(book.cover),spine=bookcaseCoverUrl(book.spine),colors=['#294e59','#5e4d65','#6c5344','#3d6257','#4c5878'],color=colors[[...book.title].reduce((sum,c)=>sum+c.charCodeAt(0),0)%colors.length],selected=bookcase.selection?.shelf===shelf.id&&bookcase.selection?.book===book.id;
+ return `<button type="button" class="bookcase-book ${selected?'is-selected':''}" data-action="bookcase-select" data-shelf="${h(shelf.id)}" data-book="${h(book.id)}" ${bookcase.busy?'disabled':''} aria-label="Select ${h(book.title)}" aria-pressed="${selected}"><span class="bookcase-volume" style="--book-color:${color}"><span class="bookcase-cover">${cover?`<img src="${h(cover)}" alt="" loading="lazy" decoding="async">`:`<span class="bookcase-fallback"><span>${h(book.title)}</span><small>${h(book.author||'NovelWeaver')}</small></span>`}</span><span class="bookcase-spine">${spine?`<img src="${h(spine)}" alt="" loading="lazy" decoding="async">`:`<span>${h(book.title)}</span><small>${h(book.author||'NovelWeaver')}</small>`}</span><span class="bookcase-pages" aria-hidden="true"></span><span class="bookcase-book-top" aria-hidden="true"></span></span><span class="bookcase-book-title">${h(book.title)}</span></button>`;
+}
+function bookcaseSelectionPanel(selected){
+ if(!selected)return '<div class="bookcase-selection-empty">Import your first series to begin.</div>';
+ const {book,shelf}=selected,cover=bookcaseCoverUrl(book.cover);
+ return `<div class="bookcase-selection-art">${cover?`<img src="${h(cover)}" alt="">`:'<span aria-hidden="true">NW</span>'}</div><div class="bookcase-selection-text"><h2>${h(book.title)}</h2><p>${h(book.author||shelf.title)}</p></div><div class="bookcase-selection-actions"><button class="primary-button" data-action="bookcase-open" data-shelf="${h(shelf.id)}" data-book="${h(book.id)}" ${bookcase.busy?'disabled':''}>Open book</button><button class="outline-button" data-action="bookcase-details" data-shelf="${h(shelf.id)}" data-book="${h(book.id)}" ${bookcase.busy?'disabled':''}>Details</button></div>`;
+}
+function renderBookcase(){
+ const shelves=bookcaseShelves(),selected=bookcaseSelected(shelves);
+ return `<div class="bookcase-library ${bookcase.spines?'show-spines':''}"><header class="bookcase-heading"><div class="bookcase-heading-top"><button class="ghost-button" data-action="bookcase-back">← Read</button><span>YOUR READING ROOM</span><button class="ghost-button" data-action="bookcase-orientation" aria-pressed="${bookcase.spines}" aria-label="${bookcase.spines?'Show front covers':'Show book spines'}">${bookcase.spines?'Covers':'Spines'}</button></div><h1>Your Library</h1><p>Choose a book to begin reading</p><div class="bookcase-toolbar"><button class="outline-button" data-action="bookcase-import-series" ${bookcase.busy?'disabled':''}>+ Import series</button><button class="outline-button" data-action="bookcase-import-books" ${bookcase.busy?'disabled':''}>+ Import books</button>${!bookcase.activeId&&S.project.Books.length?`<button class="ghost-button" data-action="bookcase-keep" ${bookcase.busy?'disabled':''}>Keep current series</button>`:''}</div></header>`+
+ (bookcase.loading?'<p class="bookcase-status" role="status">Loading saved shelves…</p>':'')+(bookcase.error?`<div class="callout warning" role="alert">${h(bookcase.error)} <button class="outline-button" data-action="bookcase-refresh">Retry</button></div>`:'')+
  bookcase.warnings.map(message=>`<p class="callout warning">${h(message)}</p>`).join('')+
- `<div class="bookcase-room">${shelves.map(s=>`<section class="bookcase-shelf" aria-label="${h(s.title)} series"><header><h2>${h(s.title)}</h2><span>${s.books.length} book${s.books.length===1?'':'s'}${s.workspace?' · Current project':''}</span></header><div class="bookcase-books">${s.books.map(b=>bookcaseBook(b,s)).join('')}</div><div class="bookcase-plank" aria-hidden="true"></div></section>`).join('')||'<div class="empty"><h3>Your bookcase is ready</h3>Import a series or some books to fill the first shelf.</div>'}</div>`;
+ `<div class="bookcase-room">${shelves.map(s=>`<section class="bookcase-shelf" aria-label="${h(s.title)} series"><header><h2>${h(s.title)}</h2><span>${s.books.length} book${s.books.length===1?'':'s'}${s.workspace?' · Current project':''}</span></header><div class="bookcase-books" tabindex="0" role="group" aria-label="Books in ${h(s.title)}; swipe to browse">${s.books.map(b=>bookcaseBook(b,s)).join('')||'<p class="bookcase-empty-shelf">This shelf is ready for more books.</p>'}</div><div class="bookcase-plank" aria-hidden="true"></div></section>`).join('')||'<div class="bookcase-empty"><h2>Your bookcase is ready</h2><p>Import a series or individual books to fill your first shelf.</p></div>'}</div><div class="bookcase-browse-hint">Swipe shelves to browse · Tap a book to select</div><div class="bookcase-selection" aria-label="Selected book">${bookcaseSelectionPanel(selected)}</div><p class="bookcase-storage-note">Imported copies stay on this device. Use Save as for a separate backup.</p></div>`;
+}
+function bookcaseSelect(shelfId,bookId){
+ if(bookcase.busy)return;
+ const shelf=bookcaseShelves().find(s=>s.id===shelfId),book=shelf?.books.find(b=>b.id===bookId);if(!book)return;
+ bookcase.selection={shelf:shelfId,book:bookId};
+ const root=document.querySelector('.bookcase-library');if(!root)return;
+ root.querySelectorAll('.bookcase-book').forEach(el=>{const chosen=el.dataset.shelf===shelfId&&el.dataset.book===bookId;el.classList.toggle('is-selected',chosen);el.setAttribute('aria-pressed',String(chosen))});
+ const panel=root.querySelector('.bookcase-selection');panel.innerHTML=bookcaseSelectionPanel({shelf,book});
+}
+async function bookcaseDetails(shelfId,bookId){
+ if(bookcase.busy)return;const token=++bookcase.detailsToken,projectId=S.project.Id;
+ modal('Back cover','<p role="status">Loading back cover…</p>');const dialog=document.querySelector('[role="dialog"]');
+ try{
+  const local=shelfId==='__workspace__'||shelfId===bookcase.activeId;
+  const project=local?S.project:(await DesktopHost.call('bookcaseRead',{id:shelfId})).project;
+  if(token!==bookcase.detailsToken||document.querySelector('[role="dialog"]')!==dialog||projectId!==S.project.Id)return;
+  const book=project.Books.find(b=>b.Id===bookId);if(!book)throw Error('This book is no longer on the shelf.');
+  const cover=cleanCover(book.BackCover);
+  modal('Back cover',`<div class="bookcase-back-detail"><h3>${h(book.Title)}</h3>${book.Author?`<p>${h(book.Author)}</p>`:''}${cover?`<button type="button" data-action="bookcase-back-zoom" class="bookcase-back-image" aria-label="Zoom back cover" aria-pressed="false"><img src="${h(cover.DataUrl)}" alt="Back cover of ${h(book.Title)}"></button><p class="item-sub">Tap the cover to zoom; swipe to read the enlarged image.</p>`:'<div class="bookcase-no-back"><span aria-hidden="true">NW</span><p>No back cover has been added for this book.</p><p class="item-sub">Open the book, then use Manage covers to add one.</p></div>'}</div>`);
+ }catch(error){if(token===bookcase.detailsToken&&document.querySelector('[role="dialog"]')===dialog)modal('Could not show back cover',`<p role="alert">${h(error.message)}</p>`)}
 }
 async function bookcaseRefresh(){
  bookcase.loading=true;bookcase.error='';if(S.view==='bookcase')render();
@@ -23,7 +55,7 @@ async function bookcaseRefresh(){
  finally{bookcase.loading=false;if(S.view==='bookcase')render()}
 }
 async function bookcaseShow(){flushAllEdits();await saveLocal();S.view='bookcase';closeSidebar();render();await bookcaseRefresh()}
-function bookcaseIsEmptyWorkspace(){return S.project.Title==='Untitled Series'&&S.project.Books.length<=1&&S.project.Books.every(b=>b.Title==='Book One'&&!b.Author&&!b.FrontCover&&!b.BackCover)&&!S.project.Threads.length&&!S.project.History.length&&!S.project.Reviews.length&&!S.project.SpeechProfiles?.length&&S.project.Chapters.every(c=>c.Title==='Chapter 1'&&c.Paragraphs.every(p=>!p.Text.trim()&&!p.Speech))}
+function bookcaseIsEmptyWorkspace(){return S.project.Title==='Untitled Series'&&S.project.Books.length<=1&&S.project.Books.every(b=>b.Title==='Book One'&&!b.Author&&!b.FrontCover&&!b.BackCover&&!b.SpineCover)&&!S.project.Threads.length&&!S.project.History.length&&!S.project.Reviews.length&&!S.project.SpeechProfiles?.length&&S.project.Chapters.every(c=>c.Title==='Chapter 1'&&c.Paragraphs.every(p=>!p.Text.trim()&&!p.Speech))}
 async function bookcaseOpen(shelfId,bookId){
  if(bookcase.busy||desktop.busy)return;bookcase.busy=true;desktop.busy=true;
  try{
@@ -79,6 +111,10 @@ document.addEventListener('click',event=>{
  else if(action==='bookcase-back'){S.view='read';render()}
  else if(action==='bookcase-refresh')bookcaseRefresh();
  else if(action==='bookcase-keep')bookcaseKeepCurrent();
+ else if(action==='bookcase-select')bookcaseSelect(button.dataset.shelf,button.dataset.book);
+ else if(action==='bookcase-back-zoom'){const zoomed=button.classList.toggle('zoomed');button.setAttribute('aria-pressed',String(zoomed));button.setAttribute('aria-label',zoomed?'Reset back cover zoom':'Zoom back cover')}
+ else if(action==='bookcase-details')bookcaseDetails(button.dataset.shelf,button.dataset.book);
+ else if(action==='bookcase-orientation'){bookcase.spines=!bookcase.spines;const root=document.querySelector('.bookcase-library');root?.classList.toggle('show-spines',bookcase.spines);button.textContent=bookcase.spines?'Covers':'Spines';button.setAttribute('aria-pressed',String(bookcase.spines));button.setAttribute('aria-label',bookcase.spines?'Show front covers':'Show book spines')}
  else if(action==='bookcase-open')bookcaseOpen(button.dataset.shelf,button.dataset.book);
  else if(action==='bookcase-import-series')bookcaseImportDialog('series');
  else if(action==='bookcase-import-books')bookcaseImportDialog('books');
