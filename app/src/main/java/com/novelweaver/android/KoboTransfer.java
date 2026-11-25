@@ -23,7 +23,7 @@ final class KoboTransfer implements Closeable {
     private final AtomicBoolean closed=new AtomicBoolean();
     private volatile Socket active;
     private final Thread worker;
-    private final Timer expiry=new Timer("NovelWeaver-Kobo-expiry",true);
+    private final Timer expiry;
     KoboTransfer(Inet4Address address,List<Book> books) throws IOException {
         if(books.isEmpty()||books.size()>MAX_BOOKS)throw new IOException("Choose 1–32 books.");
         long size=0;
@@ -45,6 +45,7 @@ final class KoboTransfer implements Closeable {
             listener=socket;
         }catch(IOException|RuntimeException e){try{socket.close();}catch(IOException ignored){}throw e;}
         worker=new Thread(this::serve,"NovelWeaver-Kobo");worker.setDaemon(true);
+        expiry=new Timer("NovelWeaver-Kobo-expiry",true);
         expiry.schedule(new TimerTask(){@Override public void run(){close();}},DURATION_MS);
         worker.start();
     }
