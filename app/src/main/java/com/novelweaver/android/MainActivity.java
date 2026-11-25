@@ -41,6 +41,12 @@ public final class MainActivity extends Activity {
     private PlaybackClient narrator;
     private Pending pending;
     private boolean initialized,destroyed;
+    private boolean koboForeground,koboPending;
+    private int koboGeneration;
+    private KoboTransfer koboTransfer;
+    private android.app.AlertDialog koboDialog;
+    private final Handler koboHandler=new Handler(Looper.getMainLooper());
+    private final Runnable koboExpiry=()->stopKobo();
     private static final class Pending {
         String id,action;JSONObject payload;
         Pending(String id,String action,JSONObject p){this.id=id;this.action=action;payload=p;}
@@ -215,6 +221,7 @@ public final class MainActivity extends Activity {
                 if(bytes.length>100_000||out.file.length()+bytes.length>64_000_000)throw new IOException("Export exceeds its size limit.");
                 try(FileOutputStream stream=new FileOutputStream(out.file,true)){stream.write(bytes);}return null;
             });break;
+            case "koboStart":startKobo(id,p);break;
             case "exportFinish":pick(id,"export",p,EXPORT);break;
             case "exportCancel":Export discard=exports.remove(p.optString("token"));if(discard!=null)discard.file.delete();success(id,null);break;
             case "previousBackup":
@@ -222,6 +229,77 @@ public final class MainActivity extends Activity {
             case "close":success(id,null);finish();break;
             default:throw new IOException("Unknown app command.");
         }}catch(Exception e){failure(id,e);}
+    }
+
+    private java.net.Inet4Address wifiAddress() throws IOException {
+        android.net.ConnectivityManager cm=(android.net.ConnectivityManager)getSystemService(CONNECTIVITY_SERVICE);
+        if(cm!=null)for(android.net.Network network:cm.getAllNetworks()){
+            android.net.NetworkCapabilities caps=cm.getNetworkCapabilities(network);
+            if(caps==null||!caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)||caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN))continue;
+            android.net.LinkProperties properties=cm.getLinkProperties(network);
+            if(properties!=null)for(android.net.LinkAddress link:properties.getLinkAddresses()){
+                java.net.InetAddress address=link.getAddress();
+                if(address instanceof java.net.Inet4Address&&!address.isLoopbackAddress()&&!address.isLinkLocalAddress())
+                    return (java.net.Inet4Address)address;
+            }
+        }
+        throw new IOException("Connect this phone to the same Wi-Fi network as your Kobo (IPv4 required).");
+    }
+    private void startKobo(String id,JSONObject p) throws Exception {
+        if(!koboForeground||koboPending||koboTransfer!=null)throw new IOException("Finish the current Kobo transfer first.");
+        JSONArray tokens=p.getJSONArray("tokens");
+        if(tokens.length()<1||tokens.length()>KoboTransfer.MAX_BOOKS)throw new IOException("Choose 1–32 books.");
+        koboPending=true;int generation=koboGeneration;
+        recoveryIO.execute(()->{
+            KoboTransfer server=null;
+            try{
+                List<KoboTransfer.Book> books=new ArrayList<>();
+                Set<String> seen=new HashSet<>();
+                for(int i=0;i<tokens.length();i++){
+                    String token=tokens.getString(i);Export item=exports.get(token);
+                    if(!seen.add(token)||item==null||!"application/epub+zip".equals(item.mime))
+                        throw new IOException("An ebook export is missing or expired.");
+                    books.add(new KoboTransfer.Book(item.file,item.name));
+                }
+                server=new KoboTransfer(wifiAddress(),books);
+                for(String token:seen)exports.remove(token);
+                final KoboTransfer ready=server;
+                runOnUiThread(()->{
+                    koboPending=false;
+                    if(destroyed||!koboForeground||generation!=koboGeneration){
+                        ready.close();failure(id,new IOException("Keep NovelWeaver open to start the transfer."));return;
+                    }
+                    koboTransfer=ready;
+                    String url=ready.url();
+                    koboDialog=new android.app.AlertDialog.Builder(this).setTitle("Send to Kobo")
+                        .setMessage("On your Kobo, open More → Beta Features → Web Browser. Enter this exact address:\n\n"+url+"\n\nTap each book to download it. Keep both devices on the same Wi-Fi network and this screen open. Sharing stops after 15 minutes or when you close this dialog.")
+                        .setPositiveButton("Stop sharing",(dialog,which)->{})
+                        .setNeutralButton("Copy address",null).create();
+                    koboDialog.setOnDismissListener(dialog->stopKobo());
+                    koboDialog.show();
+                    if(koboDialog.getWindow()!=null)koboDialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    TextView message=koboDialog.findViewById(android.R.id.message);
+                    if(message!=null)message.setTextIsSelectable(true);
+                    koboDialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener(view->{
+                        android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+                        if(clipboard!=null)clipboard.setPrimaryClip(ClipData.newPlainText("NovelWeaver Kobo address",url));
+                        toast("Transfer address copied.");
+                    });
+                    koboHandler.postDelayed(koboExpiry,KoboTransfer.DURATION_MS);
+                    success(id,null);
+                });
+            }catch(Exception e){
+                if(server!=null)server.close();
+                runOnUiThread(()->{koboPending=false;failure(id,e);});
+            }
+        });
+    }
+    private void stopKobo(){
+        koboHandler.removeCallbacks(koboExpiry);
+        KoboTransfer server=koboTransfer;koboTransfer=null;
+        if(server!=null)server.close();
+        android.app.AlertDialog dialog=koboDialog;koboDialog=null;
+        if(dialog!=null){dialog.setOnDismissListener(null);dialog.dismiss();}
     }
 
     private void pick(String id,String action,JSONObject p,int request){
@@ -273,12 +351,16 @@ public final class MainActivity extends Activity {
         if(fullscreen!=null){exitFullscreen();return;}
         if(initialized)web.evaluateJavascript("window.NWAndroid&&window.NWAndroid.back()",null);else super.onBackPressed();
     }
+    @Override protected void onResume(){
+        super.onResume();koboForeground=true;
+    }
     @Override protected void onPause(){
+        koboForeground=false;koboGeneration++;stopKobo();
         if(initialized)web.evaluateJavascript("window.NWAndroid&&window.NWAndroid.pause()",null);
         super.onPause();
     }
     @Override protected void onDestroy(){
-        destroyed=true;cancelAuto();narrator.destroy();
+        destroyed=true;koboForeground=false;koboGeneration++;stopKobo();cancelAuto();narrator.destroy();
         for(QuillNetwork.Request r:requests.values())networkIO.execute(r::cancel);
         // Existing saves may finish; shutting down must not truncate their writes.
         recoveryIO.shutdown();documentIO.shutdown();networkIO.shutdown();
