@@ -23,6 +23,7 @@ final class KoboTransfer implements Closeable {
     private final AtomicBoolean closed=new AtomicBoolean();
     private volatile Socket active;
     private final Thread worker;
+    private final Timer expiry=new Timer("NovelWeaver-Kobo-expiry",true);
     KoboTransfer(Inet4Address address,List<Book> books) throws IOException {
         if(books.isEmpty()||books.size()>MAX_BOOKS)throw new IOException("Choose 1–32 books.");
         long size=0;
@@ -43,7 +44,9 @@ final class KoboTransfer implements Closeable {
             catch(BindException occupied){socket.close();socket=new ServerSocket();socket.bind(new InetSocketAddress(address,0),8);}
             listener=socket;
         }catch(IOException|RuntimeException e){try{socket.close();}catch(IOException ignored){}throw e;}
-        worker=new Thread(this::serve,"NovelWeaver-Kobo");worker.setDaemon(true);worker.start();
+        worker=new Thread(this::serve,"NovelWeaver-Kobo");worker.setDaemon(true);
+        expiry.schedule(new TimerTask(){@Override public void run(){close();}},DURATION_MS);
+        worker.start();
     }
     String url(){return "http://"+listener.getInetAddress().getHostAddress()+":"+listener.getLocalPort()+path;}
     private void serve(){
@@ -86,12 +89,12 @@ final class KoboTransfer implements Closeable {
         String target=request[1];
         if(target.equals(path)||target.equals(path+"/")){
             StringBuilder html=new StringBuilder("<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>NovelWeaver</title></head><body style=\"font:20px sans-serif;background:white;color:black;margin:18px\"><h1>NovelWeaver</h1><p>Tap an ebook to download it.</p>");
-            for(int i=0;i<books.size();i++)html.append("<p><a href=\"").append(path).append("/book/").append(i).append(".epub\">").append(escape(books.get(i).name)).append("</a></p>");
+            for(int i=0;i<books.size();i++)html.append("<p><a href=\"").append(bookPath(i)).append("\">").append(escape(books.get(i).name)).append("</a></p>");
             html.append("<p>Keep NovelWeaver open until all downloads finish.</p></body></html>");
             text(out,200,"OK",head,html.toString());return;
         }
         for(int i=0;i<books.size();i++){
-            if(!target.equals(path+"/book/"+i+".epub"))continue;
+            if(!target.equals(bookPath(i)))continue;
             Book b=books.get(i);
             String fallback=b.name.replaceAll("[^A-Za-z0-9._ -]","_");
             String encoded=URLEncoder.encode(b.name,"UTF-8").replace("+","%20").replace("*","%2A");
@@ -103,6 +106,9 @@ final class KoboTransfer implements Closeable {
             out.flush();return;
         }
         text(out,404,"Not found",head,"Not found");
+    }
+    private String bookPath(int i){
+        return path+"/book/"+i+"/"+books.get(i).name.replaceAll("[^A-Za-z0-9._-]","_");
     }
     private static String escape(String s){return s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\"","&quot;").replace("'","&#39;");}
     private static void text(OutputStream out,int code,String reason,boolean head,String body) throws IOException {
@@ -116,6 +122,7 @@ final class KoboTransfer implements Closeable {
     }
     @Override public void close(){
         if(!closed.compareAndSet(false,true))return;
+        expiry.cancel();
         try{listener.close();}catch(IOException ignored){}
         Socket socket=active;if(socket!=null)try{socket.close();}catch(IOException ignored){}
         for(Book b:books)b.file.delete();
