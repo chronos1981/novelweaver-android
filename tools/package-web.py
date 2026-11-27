@@ -8,7 +8,7 @@ s=path.read_text()
 def replace(old,new):
  global s
  if old not in s: raise SystemExit('Android integration point changed: '+old[:90])
- s=s.replace(old,new)
+ s=s.replace(old,new,1) if old in ('<head>', '</head>') else s.replace(old,new)
 
 replace('<head>', '<head>\n<meta http-equiv="Content-Security-Policy" content="default-src \'self\' data: blob:; script-src \'self\' \'unsafe-inline\'; style-src \'self\' \'unsafe-inline\'; font-src \'self\'; img-src \'self\' data: blob:; connect-src \'none\'; frame-src \'none\'; object-src \'none\'; base-uri \'none\'">')
 replace('</head>', '<style>.save-status{max-width:28vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}</style></head>')
