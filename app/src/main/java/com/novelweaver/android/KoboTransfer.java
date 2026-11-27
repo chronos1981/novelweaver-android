@@ -34,10 +34,8 @@ final class KoboTransfer implements Closeable {
             if(size>MAX_BYTES)throw new IOException("Selected ebooks exceed 128 MB.");
         }
         this.books=new ArrayList<>(books);
-        byte[] secret=new byte[6];new SecureRandom().nextBytes(secret);
-        StringBuilder key=new StringBuilder("/");
-        for(byte b:secret)key.append(String.format(Locale.ROOT,"%02x",b&255));
-        path=key.toString();
+        // Short, easy-to-type session PIN for a trusted private Wi-Fi network.
+        path=String.format(Locale.ROOT,"/%04d",new SecureRandom().nextInt(10000));
         ServerSocket socket=new ServerSocket();
         try{
             try{socket.bind(new InetSocketAddress(address,8765),8);}
