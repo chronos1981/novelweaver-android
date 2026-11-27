@@ -6,7 +6,7 @@ s=p.read_text()
 def replace(old,new):
  global s
  if old not in s:raise SystemExit('Speech integration point changed: '+old[:90])
- s=s.replace(old,new)
+ s=s.replace(old,new,1) if old in ('<head>', '</head>') else s.replace(old,new)
 replace('function cleanProject(raw){',(root/'tools/voice-filters.js').read_text()+'\n'+(root/'tools/speech-tags.js').read_text()+'\n'+(root/'tools/quick-voices.js').read_text()+'\nfunction cleanProject(raw){')
 replace('Books:[],Chapters:[],Threads:[],Reviews:[],History:[]};\n p.Books=', 'Books:[],Chapters:[],Threads:[],Reviews:[],History:[],SpeechDefaults:cleanSpeechDefaults(raw.SpeechDefaults),SpeechProfiles:cleanSpeechProfiles(raw.SpeechProfiles)};\n p.Books=')
 replace('ThreadIds:Array.isArray(q.ThreadIds)?q.ThreadIds.map(String):[]}', 'ThreadIds:Array.isArray(q.ThreadIds)?q.ThreadIds.map(String):[],Speech:cleanSpeechTag(q.Speech)}')

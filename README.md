@@ -318,6 +318,18 @@ access to this unlocked app can use it. The key and chat are not sent to a
 NovelWeaver service. Your selected manuscript context is sent to your Open WebUI
 server only when you press Send or Rewrite. Server/provider logs remain theirs.
 
+## Send to Kobo (local Wi-Fi)
+
+1. Connect the Android phone and Kobo to the same trusted Wi-Fi network.
+2. In NovelWeaver, choose **More → Send to Kobo**, or choose **Send to Kobo** in the book export dialog.
+3. Select one or more books and tap **Start transfer**.
+4. On the Kobo, open **More → Beta Features → Web Browser** and enter the exact HTTP address shown on the phone.
+5. Tap each book to download it. Keep NovelWeaver open while transferring; tap **Stop sharing** when finished.
+
+This uses the existing standard EPUB exporter (including navigation and cover artwork). No BookDrop account, external service, or Kobo modification is required. The phone serves only the selected exports on its Wi-Fi IPv4 address, behind a random four-digit session URL (for example, http://192.168.1.25:8765/1234). The short PIN is only a convenience barrier, not strong authentication. Sharing stops after 15 minutes, when the transfer dialog is closed, or when the app leaves the foreground. The temporary exports are deleted when sharing stops. HTTP is not encrypted: use a trusted private network and do not share the session address. Guest Wi-Fi client isolation or Kobo browser/firmware limitations may prevent transfers. Up to 32 books, 64 MB each and 128 MB total, are supported. KEPUB conversion and automatic push into the Kobo library are not implemented.
+
+The HTTP server was compiled and smoke-tested on a local JVM against the committed source: multi-book listing, HEAD, byte-exact downloads, rejection of incorrect URLs, and cleanup passed. The initial Android build passed; a real Kobo downloaded the file but showed blank pages. The Android packaging fix prevents app-only HTML metadata and styles from entering EPUB XHTML. The corrected rendering still requires physical Kobo verification. Run `./gradlew testDebugUnitTest assembleDebug lintDebug` to build and run the included unit tests.
+
 ## Build from source
 
 Open this folder in Android Studio, select JDK 17 and install Android SDK 35.
