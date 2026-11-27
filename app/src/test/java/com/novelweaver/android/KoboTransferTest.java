@@ -19,6 +19,7 @@ public class KoboTransferTest {
             Arrays.asList(new KoboTransfer.Book(a,"First & book.epub"),new KoboTransfer.Book(b,"Second.epub")));
         try {
             URL home=new URL(server.url());
+            assertTrue(home.getPath().matches("/[0-9]{4}"));
             HttpURLConnection index=get(home,"GET");
             assertEquals(200,index.getResponseCode());
             String html=new String(index.getInputStream().readAllBytes(),StandardCharsets.UTF_8);
