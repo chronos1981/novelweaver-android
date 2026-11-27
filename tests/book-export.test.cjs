@@ -9,6 +9,16 @@ function unzipStored(buffer){const data=Buffer.from(buffer),entries=new Map();le
  const normalized=context.api.cleanProject({Id:'series',Books:[book],Chapters:chapters,Threads:[],History:[],Reviews:[]});assert.equal(normalized.Books[0].FrontCover.DataUrl,book.FrontCover.DataUrl);assert.equal(normalized.Books[0].BackCover.DataUrl,book.BackCover.DataUrl);assert.equal(normalized.Books[0].Author,book.Author);assert.equal(context.api.cleanCover({DataUrl:'https://external/image.jpg',Width:1,Height:1}),null);assert.equal(context.api.cleanCover({DataUrl:'data:image/svg+xml;base64,AAAA',Width:1,Height:1}),null);
  const epub=context.api.buildBookEpub(book,chapters),word=context.api.buildBookDocx(book,chapters),epubData=await epub.arrayBuffer(),wordData=await word.arrayBuffer(),e=unzipStored(epubData),w=unzipStored(wordData);
  assert.equal(epub.type,'application/epub+zip');assert.equal([...e.keys()][0],'mimetype');assert.equal(e.get('mimetype').toString(),'application/epub+zip');assert.equal([...e.keys()].filter(k=>/front-cover\.(jpg|png)$/.test(k)).length,1);assert(e.has('EPUB/back-cover.xhtml'));assert(e.has('EPUB/chapter-2.xhtml'));assert.match(e.get('EPUB/package.opf').toString(),/properties="cover-image"/);assert.match(e.get('EPUB/package.opf').toString(),/A. Writer/);assert.match(e.get('EPUB/nav.xhtml').toString(),/Chapter 2/);assert.match(e.get('EPUB/chapter-1.xhtml').toString(),/&lt;escaped&gt; &amp;/);assert.match(w.get('word/document.xml').toString(),/r:embed="front"/);assert.match(w.get('word/document.xml').toString(),/r:embed="back"/);assert.match(w.get('word/document.xml').toString(),/last paragraph/);assert.equal([...w.keys()].filter(k=>k.startsWith('word/media/')).length,2);
+ // Parse every generated XML/XHTML document strictly: browser-only head injection once made Kobo pages blank.
+ for(const [name,bytes] of e){
+  if(!/\.(xhtml|opf|xml)$/.test(name))continue;
+  if(name.endsWith('.xhtml')){
+   assert.doesNotMatch(bytes.toString(),/Content-Security-Policy|paragraph-quick-voice|chapter-navigation|save-status/);
+   assert.match(bytes.toString(),/<body>[\s\S]+<\/body>/);
+  }
+  const result=require('node:child_process').spawnSync('python3',['-c','import sys, xml.etree.ElementTree as ET; ET.fromstring(sys.stdin.buffer.read())'],{input:bytes,encoding:'utf8'});
+  assert.equal(result.status,0,name+': '+(result.stderr||result.error||''));
+ }
  const noCovers={Id:'bare',Title:'Bare book'};assert(context.api.buildBookEpub(noCovers,[]).size>0);assert(context.api.buildBookDocx(noCovers,chapters).size>0);
  if(qa){fs.writeFileSync(path.join(qa,'sample.epub'),Buffer.from(epubData));fs.writeFileSync(path.join(qa,'sample.docx'),Buffer.from(wordData))}
  console.log('PASS: cover persistence and validation, binary ZIP integrity, EPUB metadata/navigation/covers, Word image relationships, chapter text, and no-cover exports.');
